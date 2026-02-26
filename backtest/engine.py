@@ -170,33 +170,45 @@ class BacktestEngine:
         account_blown = False
 
         for i in range(total_bars):
-            if account_blown:
-                # Still record equity for remaining bars (flat)
-                bar_evt = self._make_bar_event(df, i)
-                portfolio.update_market(bar_evt)
-                continue
-
             row = df.iloc[i]
             bar_evt = self._make_bar_event(df, i)
 
             # -- Process pending orders from previous bar --
+            # (always process, even after account blown, to fill force-close orders)
             fills = broker.process_bar(bar_evt)
             for fill in fills:
                 portfolio.on_fill(fill, bar_index=i)
 
-                # If this fill closes the position, clear SL/TP
+                # If this fill closes the position, clear SL/TP and notify strategy
                 if portfolio.position == 0:
                     broker.clear_sl_tp()
+                    strategy.on_position_closed()
+
+            if account_blown:
+                # Record equity for remaining bars (flat)
+                portfolio.update_market(bar_evt)
+                continue
 
             # -- Strategy signal --
             history = df.iloc[: i + 1]
             bar_dict = row.to_dict()
             signal = strategy.on_bar(bar_dict, history)
 
-            if signal is not None and not account_blown:
-                order = portfolio.on_signal(signal, quantity=config.quantity)
-                if order is not None:
-                    broker.submit_order(order)
+            if signal is not None:
+                # Try strategy's custom order builder first (for SL/TP, multi-TP)
+                custom_order = strategy.build_order(
+                    signal=signal,
+                    bar=bar_dict,
+                    quantity=config.quantity,
+                    tick_size=inst_specs["tick_size"],
+                )
+                if custom_order is not None:
+                    broker.submit_order(custom_order)
+                else:
+                    # Default: let portfolio convert signal to order
+                    order = portfolio.on_signal(signal, quantity=config.quantity)
+                    if order is not None:
+                        broker.submit_order(order)
 
             # -- Update market (equity snapshot) --
             portfolio.update_market(bar_evt)

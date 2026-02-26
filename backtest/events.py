@@ -69,13 +69,15 @@ class OrderEvent:
     """Represents an order to be submitted to the broker.
 
     Attributes:
-        timestamp:   Time the order was created.
-        direction:   LONG, SHORT, or EXIT.
-        quantity:    Number of contracts.
-        order_type:  "MARKET" or "LIMIT".
-        limit_price: Required if order_type is "LIMIT".
-        stop_loss:   Absolute price level for stop loss, or None.
-        take_profit: Absolute price level for take profit, or None.
+        timestamp:          Time the order was created.
+        direction:          LONG, SHORT, or EXIT.
+        quantity:           Number of contracts.
+        order_type:         "MARKET" or "LIMIT".
+        limit_price:        Required if order_type is "LIMIT".
+        stop_loss:          Absolute price level for stop loss, or None.
+        take_profit:        Absolute price level for take profit, or None.
+        take_profit_levels: Multi-level TP as list of (price, qty) tuples.
+                            Mutually exclusive with take_profit.
     """
 
     timestamp: datetime
@@ -85,6 +87,7 @@ class OrderEvent:
     limit_price: float | None = None
     stop_loss: float | None = None
     take_profit: float | None = None
+    take_profit_levels: list[tuple[float, int]] | None = None
 
     def __post_init__(self) -> None:
         if self.order_type not in ("MARKET", "LIMIT"):
@@ -95,6 +98,17 @@ class OrderEvent:
             raise ValueError("limit_price is required for LIMIT orders")
         if self.quantity <= 0:
             raise ValueError(f"Order quantity must be positive, got {self.quantity}")
+        if self.take_profit_levels is not None:
+            if self.take_profit is not None:
+                raise ValueError(
+                    "Cannot set both 'take_profit' and 'take_profit_levels'"
+                )
+            total_tp_qty = sum(qty for _, qty in self.take_profit_levels)
+            if total_tp_qty != self.quantity:
+                raise ValueError(
+                    f"take_profit_levels total qty ({total_tp_qty}) "
+                    f"must equal order quantity ({self.quantity})"
+                )
 
 
 @dataclass(slots=True)

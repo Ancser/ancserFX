@@ -148,22 +148,17 @@ def _parse_timestamp(series: pd.Series) -> pd.Series:
     return pd.to_datetime(series, errors="coerce")
 
 
-def convert_csv_to_parquet(
-    csv_path: Path,
-    instrument: str,
-    timeframe: str,
-    store: DataStore,
-) -> int:
-    """Read a single CSV, normalise columns, and write to Parquet.
+def _read_and_normalize_csv(csv_path: Path) -> pd.DataFrame | None:
+    """Read a single CSV and normalise to standard OHLCV columns.
 
-    Returns the number of rows written.
+    Returns a cleaned DataFrame or None if the file cannot be processed.
     """
     print(f"  Reading {csv_path.name} ...")
     df = pd.read_csv(csv_path, low_memory=False)
 
     if df.empty:
         print(f"  [skip] {csv_path.name} is empty.")
-        return 0
+        return None
 
     # --- Detect column mapping ---
     col_map = _detect_column_mapping(list(df.columns))
@@ -173,7 +168,7 @@ def convert_csv_to_parquet(
             f"          Found columns: {list(df.columns)}\n"
             f"          Skipping file."
         )
-        return 0
+        return None
 
     df.rename(columns=col_map, inplace=True)
 
@@ -187,7 +182,7 @@ def convert_csv_to_parquet(
     missing = required - set(df.columns)
     if missing:
         print(f"  [error] Missing columns after mapping: {missing}. Skipping.")
-        return 0
+        return None
 
     # --- Normalise types ---
     df["timestamp"] = _parse_timestamp(df["timestamp"])
@@ -205,17 +200,13 @@ def convert_csv_to_parquet(
 
     # Keep only the standard columns
     df = df[["timestamp", "open", "high", "low", "close", "volume"]].copy()
-    df.sort_values("timestamp", inplace=True)
-    df.drop_duplicates(subset=["timestamp"], keep="last", inplace=True)
-    df.reset_index(drop=True, inplace=True)
 
     if df.empty:
         print(f"  [skip] No valid rows after cleaning.")
-        return 0
+        return None
 
-    store.save_bars(instrument, timeframe, df)
-    print(f"  [ok] {len(df):,} bars written for {instrument.upper()}/{timeframe}")
-    return len(df)
+    print(f"  [ok] {len(df):,} rows from {csv_path.name}")
+    return df
 
 
 def _auto_detect_timeframe(csv_path: Path) -> str:
@@ -327,12 +318,26 @@ def main() -> None:
         sys.exit(1)
 
     print(f"Found {len(csv_files)} CSV file(s) in {input_dir}")
-    total_rows = 0
+
+    # Read all CSVs, normalize, then merge into one DataFrame per timeframe
+    all_frames: dict[str, list[pd.DataFrame]] = {}
 
     for csv_path in csv_files:
         timeframe = args.timeframe or _auto_detect_timeframe(csv_path)
-        rows = convert_csv_to_parquet(csv_path, instrument, timeframe, store)
-        total_rows += rows
+        df = _read_and_normalize_csv(csv_path)
+        if df is not None and not df.empty:
+            all_frames.setdefault(timeframe, []).append(df)
+
+    total_rows = 0
+    for timeframe, frames in all_frames.items():
+        merged = pd.concat(frames, ignore_index=True)
+        merged.sort_values("timestamp", inplace=True)
+        merged.drop_duplicates(subset=["timestamp"], keep="last", inplace=True)
+        merged.reset_index(drop=True, inplace=True)
+
+        store.save_bars(instrument, timeframe, merged)
+        total_rows += len(merged)
+        print(f"  [ok] {len(merged):,} bars merged & written for {instrument.upper()}/{timeframe}")
 
     print(f"\nConversion complete. Total rows written: {total_rows:,}")
 

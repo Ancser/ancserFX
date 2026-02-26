@@ -15,7 +15,7 @@ from typing import Any
 
 import pandas as pd
 
-from backtest.events import SignalEvent
+from backtest.events import OrderEvent, SignalEvent
 
 
 # ---------------------------------------------------------------------------
@@ -168,6 +168,36 @@ class BaseStrategy(ABC):
         Override to pre-compute indicators on the full dataset so that
         :meth:`on_bar` can look them up by index rather than recalculating
         every bar.
+        """
+        pass
+
+    def build_order(
+        self,
+        signal: SignalEvent,
+        bar: dict,
+        quantity: int,
+        tick_size: float,
+    ) -> OrderEvent | None:
+        """Optionally create a custom OrderEvent with SL/TP levels.
+
+        Override when a strategy needs to attach stop-loss, take-profit,
+        or multi-level take-profit orders.  The engine calls this after
+        on_bar() returns a non-None signal.
+
+        If this returns None (default), the engine uses Portfolio.on_signal().
+
+        Args:
+            signal:    The signal returned by on_bar().
+            bar:       Current bar dict with OHLCV data.
+            quantity:  Contract count from BacktestConfig.
+            tick_size: Instrument tick size for price calculations.
+        """
+        return None
+
+    def on_position_closed(self) -> None:
+        """Called by the engine when the position goes flat after fills.
+
+        Override to reset internal position-tracking state.
         """
         pass
 

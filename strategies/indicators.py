@@ -64,6 +64,53 @@ def macd(
     return macd_line, signal_line, histogram
 
 
+def kdj(
+    high: pd.Series,
+    low: pd.Series,
+    close: pd.Series,
+    ilong: int = 9,
+    isig: int = 3,
+) -> tuple[pd.Series, pd.Series, pd.Series]:
+    """KDJ oscillator (TradingView-compatible bcwsma smoothing).
+
+    bcwsma(source, length, weight) = (weight * source + (length - weight) * prev) / length
+    For KDJ, weight is always 1.
+
+    Returns:
+        (K, D, J) where J = 3*K - 2*D.
+    """
+    lowest_low = low.rolling(window=ilong, min_periods=ilong).min()
+    highest_high = high.rolling(window=ilong, min_periods=ilong).max()
+
+    denom = highest_high - lowest_low
+    denom = denom.replace(0.0, np.nan)
+    rsv = 100.0 * (close - lowest_low) / denom
+
+    k_values = np.full(len(rsv), np.nan)
+    d_values = np.full(len(rsv), np.nan)
+
+    # TradingView initializes K and D at 50
+    k_prev = 50.0
+    d_prev = 50.0
+
+    for i in range(len(rsv)):
+        if np.isnan(rsv.iloc[i]):
+            continue
+        k_val = (1.0 * rsv.iloc[i] + (isig - 1) * k_prev) / isig
+        d_val = (1.0 * k_val + (isig - 1) * d_prev) / isig
+
+        k_values[i] = k_val
+        d_values[i] = d_val
+        k_prev = k_val
+        d_prev = d_val
+
+    k_series = pd.Series(k_values, index=close.index)
+    d_series = pd.Series(d_values, index=close.index)
+    j_series = 3.0 * k_series - 2.0 * d_series
+
+    return k_series, d_series, j_series
+
+
 # ---------------------------------------------------------------------------
 # Volatility
 # ---------------------------------------------------------------------------

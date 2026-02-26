@@ -71,6 +71,10 @@ class SimulatedBroker:
         If the order has stop_loss or take_profit set, a corresponding
         SL/TP order is registered to protect the new position.
 
+        For multi-level take-profit (take_profit_levels), one _SLTPOrder
+        is created per TP level, each sharing the same stop_loss but with
+        its own take_profit price and quantity.
+
         Args:
             order: The order event to submit.
         """
@@ -78,8 +82,25 @@ class SimulatedBroker:
 
         # Register SL/TP if the order opens a new position (LONG or SHORT, not EXIT-close)
         if order.direction in (SignalDirection.LONG, SignalDirection.SHORT):
-            if order.stop_loss is not None or order.take_profit is not None:
-                position_dir = order.direction.value  # 1 for LONG, -1 for SHORT
+            position_dir = order.direction.value  # 1 for LONG, -1 for SHORT
+
+            if order.take_profit_levels is not None:
+                # Multi-level TP: one _SLTPOrder per level, each with shared SL
+                for tp_price, tp_qty in order.take_profit_levels:
+                    sl_tp = _SLTPOrder(
+                        position_direction=position_dir,
+                        stop_loss=order.stop_loss,
+                        take_profit=tp_price,
+                        quantity=tp_qty,
+                    )
+                    self.sl_tp_orders.append(sl_tp)
+                    logger.debug(
+                        "Multi-TP registered: dir=%d SL=%s TP=%.2f qty=%d",
+                        position_dir, order.stop_loss, tp_price, tp_qty,
+                    )
+
+            elif order.stop_loss is not None or order.take_profit is not None:
+                # Single SL/TP (original path)
                 sl_tp = _SLTPOrder(
                     position_direction=position_dir,
                     stop_loss=order.stop_loss,
@@ -87,7 +108,6 @@ class SimulatedBroker:
                     quantity=order.quantity,
                 )
                 self.sl_tp_orders.append(sl_tp)
-
                 logger.debug(
                     "SL/TP registered: dir=%d SL=%s TP=%s qty=%d",
                     position_dir,

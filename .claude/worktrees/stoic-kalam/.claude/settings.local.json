@@ -1,0 +1,30 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git branch -m claude/festive-cori prototype)",
+      "Bash(git checkout prototype)",
+      "Bash(git worktree remove --force \".claude/worktrees/festive-cori\")",
+      "Bash(python -c \":*)",
+      "Bash(python run_backtest.py --list)",
+      "Bash(git add backtest/engine.py run_backtest.py strategies/basic/sma_crossover.py strategies/basic/rsi_mean_reversion.py strategies/orderflow/delta_momentum.py)",
+      "Bash(python -m scripts.download_kaggle --list)",
+      "Bash(python -m scripts.download_kaggle --dataset es-cme)",
+      "Bash(python -m scripts.convert_to_parquet --instrument es --input-dir data/raw/es-cme)",
+      "Bash(python -m scripts.convert_to_parquet --instrument es --input-dir data/raw/es-cme --timeframe daily)",
+      "Bash(python run_backtest.py --strategy \"SMA Crossover\" --instrument ES --timeframe daily)",
+      "Bash(python run_backtest.py --strategy \"SMA Crossover\" --instrument ES --timeframe daily --account 150K)",
+      "Bash(python run_backtest.py --strategy \"SMA Crossover\" --instrument ES --timeframe daily --account 150K --start 2020-01-01 --end 2022-12-31)",
+      "Bash(python -m scripts.download_kaggle --dataset sp-nq-5yr)",
+      "Bash(python -m scripts.convert_to_parquet --instrument es --input-dir \"data/raw/sp-nq-5yr\" --timeframe 5min)",
+      "Bash(python run_backtest.py --strategy \"SMA Crossover\" --instrument ES --timeframe 5min --account 50K --start 2023-01-01 --end 2024-06-30)",
+      "Bash(python run_backtest.py --strategy \"SMA Crossover\" --instrument ES --timeframe 5min --account 150K --start 2023-01-01 --end 2024-06-30 --param fast_period=20 --param slow_period=50)",
+      "Bash(python -c \"from strategies.registry import StrategyRegistry; print\\(StrategyRegistry.list_strategies\\(\\)\\)\")",
+      "Bash(PYTHONIOENCODING=utf-8 python -c \":*)",
+      "Bash(PYTHONIOENCODING=utf-8 python run_backtest.py --list)",
+      "Bash(PYTHONIOENCODING=utf-8 python run_backtest.py --strategy \"KDJ RSI Bot\" --instrument ES --timeframe 5min --account 150K --quantity 250 --start 2023-01-01 --end 2024-06-30 -v)",
+      "Bash(PYTHONIOENCODING=utf-8 python run_backtest.py --strategy \"KDJ RSI Bot\" --instrument ES --timeframe 5min --account 150K --quantity 10 --start 2023-01-01 --end 2024-06-30 -v)",
+      "Bash(PYTHONIOENCODING=utf-8 python run_backtest.py --strategy \"SMA Crossover\" --instrument ES --timeframe 5min --account 150K --start 2023-01-01 --end 2024-06-30)",
+      "Bash(PYTHONIOENCODING=utf-8 python run_backtest.py --strategy \"KDJ RSI Bot\" --instrument ES --timeframe 5min --account 150K --quantity 5 --start 2023-01-01 --end 2024-06-30 -v)"
+    ]
+  }
+}
