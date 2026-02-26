@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:project-x-py.readthedocs.io)",
+      "WebFetch(domain:gateway.docs.projectx.com)",
+      "Bash(git -C \"F:/ancserQuant/ancserFX/.claude/worktrees/festive-cori\" log --oneline --all)",
+      "WebFetch(domain:help.topstep.com)",
+      "WebFetch(domain:www.topstep.com)"
+    ]
+  }
+}
