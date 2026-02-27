@@ -29,12 +29,16 @@ class _SLTPOrder:
         stop_loss:          Absolute stop-loss price, or None.
         take_profit:        Absolute take-profit price, or None.
         quantity:           Number of contracts.
+        trail_sl_to:        When this TP triggers, move remaining orders' SL to this price.
+                            E.g. TP1 sets trail_sl_to=entry (breakeven),
+                            TP2 sets trail_sl_to=TP1 price.
     """
 
     position_direction: int  # 1 = long position, -1 = short position
     stop_loss: float | None
     take_profit: float | None
     quantity: int
+    trail_sl_to: float | None = None
 
 
 class SimulatedBroker:
@@ -86,17 +90,22 @@ class SimulatedBroker:
 
             if order.take_profit_levels is not None:
                 # Multi-level TP: one _SLTPOrder per level, each with shared SL
-                for tp_price, tp_qty in order.take_profit_levels:
+                # Tuple format: (tp_price, tp_qty, trail_sl_to)
+                for level in order.take_profit_levels:
+                    tp_price, tp_qty = level[0], level[1]
+                    trail = level[2] if len(level) > 2 else None
                     sl_tp = _SLTPOrder(
                         position_direction=position_dir,
                         stop_loss=order.stop_loss,
                         take_profit=tp_price,
                         quantity=tp_qty,
+                        trail_sl_to=trail,
                     )
                     self.sl_tp_orders.append(sl_tp)
                     logger.debug(
-                        "Multi-TP registered: dir=%d SL=%s TP=%.2f qty=%d",
+                        "Multi-TP registered: dir=%d SL=%s TP=%.2f qty=%d trail_sl=%.2f",
                         position_dir, order.stop_loss, tp_price, tp_qty,
+                        trail if trail else 0.0,
                     )
 
             elif order.stop_loss is not None or order.take_profit is not None:
@@ -143,16 +152,37 @@ class SimulatedBroker:
 
         # ---- 2. Check SL/TP orders ----
         sl_tp_to_remove: list[int] = []
+        trail_updates: list[float] = []  # new SL prices from TP trail
 
         for i, sl_tp in enumerate(self.sl_tp_orders):
             fill = self._check_sl_tp(sl_tp, bar)
             if fill is not None:
                 fills.append(fill)
                 sl_tp_to_remove.append(i)
+                # If this was a TP hit (not SL) and has trail_sl_to, queue SL update
+                if sl_tp.trail_sl_to is not None and sl_tp.take_profit is not None:
+                    # Check if this was actually a TP fill (not SL)
+                    is_tp_fill = self._was_tp_triggered(sl_tp, bar)
+                    if is_tp_fill:
+                        trail_updates.append(sl_tp.trail_sl_to)
+                        logger.debug(
+                            "Trailing SL: moving remaining orders' SL to %.2f",
+                            sl_tp.trail_sl_to,
+                        )
 
         # Remove triggered SL/TP orders (reverse order to preserve indices)
         for idx in reversed(sl_tp_to_remove):
             self.sl_tp_orders.pop(idx)
+
+        # Apply trailing SL updates to remaining orders
+        for new_sl in trail_updates:
+            for sl_tp in self.sl_tp_orders:
+                old_sl = sl_tp.stop_loss
+                sl_tp.stop_loss = new_sl
+                logger.debug(
+                    "SL moved: %.2f -> %.2f (remaining qty=%d)",
+                    old_sl or 0.0, new_sl, sl_tp.quantity,
+                )
 
         return fills
 
@@ -232,6 +262,32 @@ class SimulatedBroker:
                 return None
 
         return None
+
+    @staticmethod
+    def _was_tp_triggered(sl_tp: _SLTPOrder, bar: MarketEvent) -> bool:
+        """Check if the TP (not SL) was the trigger for this bar.
+
+        When both SL and TP could trigger on the same bar, SL takes priority
+        in _check_sl_tp. This method checks if TP *would* have triggered
+        assuming SL did not.
+        """
+        if sl_tp.take_profit is None:
+            return False
+        if sl_tp.position_direction == 1:
+            # LONG: TP triggers if high >= take_profit
+            # But SL triggers if low <= stop_loss — SL has priority
+            sl_triggered = (
+                sl_tp.stop_loss is not None and bar.low <= sl_tp.stop_loss
+            )
+            tp_triggered = bar.high >= sl_tp.take_profit
+            return tp_triggered and not sl_triggered
+        else:
+            # SHORT: TP triggers if low <= take_profit
+            sl_triggered = (
+                sl_tp.stop_loss is not None and bar.high >= sl_tp.stop_loss
+            )
+            tp_triggered = bar.low <= sl_tp.take_profit
+            return tp_triggered and not sl_triggered
 
     def _check_sl_tp(
         self, sl_tp: _SLTPOrder, bar: MarketEvent

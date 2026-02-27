@@ -195,6 +195,17 @@ class BacktestEngine:
             signal = strategy.on_bar(bar_dict, history)
 
             if signal is not None:
+                # -- Time window check: block new entries near must-flat-by --
+                if signal.direction.value != 0 and risk_mgr.is_in_no_entry_window(
+                    bar_evt.timestamp, buffer_minutes=20
+                ):
+                    logger.debug(
+                        "Entry blocked: too close to must-flat-by (%s)",
+                        bar_evt.timestamp.time(),
+                    )
+                    signal = None
+
+            if signal is not None:
                 # Try strategy's custom order builder first (for SL/TP, multi-TP)
                 custom_order = strategy.build_order(
                     signal=signal,
@@ -202,13 +213,32 @@ class BacktestEngine:
                     quantity=config.quantity,
                     tick_size=inst_specs["tick_size"],
                 )
-                if custom_order is not None:
-                    broker.submit_order(custom_order)
-                else:
+
+                order_to_submit = custom_order
+                if order_to_submit is None:
                     # Default: let portfolio convert signal to order
-                    order = portfolio.on_signal(signal, quantity=config.quantity)
-                    if order is not None:
-                        broker.submit_order(order)
+                    order_to_submit = portfolio.on_signal(
+                        signal, quantity=config.quantity
+                    )
+
+                # -- Circuit breaker: skip if SL loss would blow account --
+                if order_to_submit is not None and order_to_submit.stop_loss is not None:
+                    equity = portfolio.get_equity()
+                    point_value = inst_specs["tick_value"] / inst_specs["tick_size"]
+                    entry_price = bar_dict["close"]
+                    is_safe, reason = risk_mgr.check_order_safe_with_entry(
+                        order=order_to_submit,
+                        entry_price=entry_price,
+                        equity=equity,
+                        point_value=point_value,
+                    )
+                    if not is_safe:
+                        violations.append(reason)
+                        order_to_submit = None
+                        strategy.on_position_closed()  # reset strategy state
+
+                if order_to_submit is not None:
+                    broker.submit_order(order_to_submit)
 
             # -- Update market (equity snapshot) --
             portfolio.update_market(bar_evt)

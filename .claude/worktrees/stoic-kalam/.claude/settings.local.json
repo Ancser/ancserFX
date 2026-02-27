@@ -24,7 +24,21 @@
       "Bash(PYTHONIOENCODING=utf-8 python run_backtest.py --strategy \"KDJ RSI Bot\" --instrument ES --timeframe 5min --account 150K --quantity 250 --start 2023-01-01 --end 2024-06-30 -v)",
       "Bash(PYTHONIOENCODING=utf-8 python run_backtest.py --strategy \"KDJ RSI Bot\" --instrument ES --timeframe 5min --account 150K --quantity 10 --start 2023-01-01 --end 2024-06-30 -v)",
       "Bash(PYTHONIOENCODING=utf-8 python run_backtest.py --strategy \"SMA Crossover\" --instrument ES --timeframe 5min --account 150K --start 2023-01-01 --end 2024-06-30)",
-      "Bash(PYTHONIOENCODING=utf-8 python run_backtest.py --strategy \"KDJ RSI Bot\" --instrument ES --timeframe 5min --account 150K --quantity 5 --start 2023-01-01 --end 2024-06-30 -v)"
+      "Bash(PYTHONIOENCODING=utf-8 python run_backtest.py --strategy \"KDJ RSI Bot\" --instrument ES --timeframe 5min --account 150K --quantity 5 --start 2023-01-01 --end 2024-06-30 -v)",
+      "Bash(PYTHONIOENCODING=utf-8 python -c \"from strategies.basic.kdj_rsi_bot import KDJRSIBot; from backtest.engine import BacktestEngine; print\\(''All imports OK''\\)\")",
+      "Bash(PYTHONIOENCODING=utf-8 python run_backtest.py --strategy \"KDJ RSI Bot\" --instrument MES --timeframe 5min --account 50K --quantity 5 --start 2023-01-01 --end 2024-06-30 -v)",
+      "Bash(PYTHONIOENCODING=utf-8 python run_backtest.py --strategy \"KDJ RSI Bot\" --instrument MES --timeframe 5min --account 50K --quantity 3 --param sl_points=8 --param tp1_ticks=60 --param tp2_ticks=120 --param tp3_ticks=200 --start 2023-01-01 --end 2024-06-30 -v)",
+      "Bash(PYTHONIOENCODING=utf-8 python run_backtest.py --strategy \"SMA Crossover\" --instrument MES --timeframe 5min --account 50K --start 2023-06-01 --end 2024-01-01)",
+      "Bash(PYTHONIOENCODING=utf-8 python run_backtest.py --strategy \"KDJ RSI Bot\" --instrument MES --timeframe 5min --account 50K --quantity 3 --param sl_points=8 --param tp1_ticks=60 --param tp2_ticks=120 --param tp3_ticks=200 --start 2023-01-01 --end 2024-06-30 --chart results_chart.html)",
+      "Bash(PYTHONIOENCODING=utf-8 python run_research.py monte-carlo --strategy \"KDJ RSI Bot\" --instrument MES --account 50K --quantity 3 --param sl_points=8 --param tp1_ticks=60 --param tp2_ticks=120 --param tp3_ticks=200 --start 2024-01-01 --end 2024-06-30 --simulations 1000 --chart mc_test.html)",
+      "Bash(PYTHONIOENCODING=utf-8 python run_research.py optimize --strategy \"KDJ RSI Bot\" --instrument MES --account 50K --quantity 3 --start 2024-01-01 --end 2024-06-30 --iterations 20 --target net_profit --chart opt_test.html)",
+      "Bash(PYTHONIOENCODING=utf-8 python run_research.py full --strategy \"KDJ RSI Bot\" --instrument MES --account 50K --quantity 3 --start 2024-01-01 --end 2024-06-30 --iterations 15 --simulations 500 --target net_profit --chart full_report)",
+      "Bash(PYTHONIOENCODING=utf-8 python run_research.py monte-carlo --strategy \"KDJ RSI Bot\" --instrument MES --account 50K --quantity 3 --param sl_points=8 --param tp1_ticks=60 --simulations 1000 --start 2024-01-01 --end 2024-06-30)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(taskkill /F /IM streamlit.exe)",
+      "Bash(taskkill /F /FI \"WINDOWTITLE eq streamlit*\")",
+      "Bash(netstat -ano)",
+      "Bash(findstr :8501)"
     ]
   }
 }

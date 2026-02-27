@@ -156,6 +156,11 @@ def main() -> None:
         help="Path to save full results as JSON.",
     )
     parser.add_argument(
+        "--chart", type=str, nargs="?", const="auto",
+        help="Generate chart. Optionally specify output path (e.g. results.html). "
+             "Without path, opens in browser.",
+    )
+    parser.add_argument(
         "--verbose", "-v", action="store_true",
         help="Enable debug logging.",
     )
@@ -242,32 +247,40 @@ def main() -> None:
         if len(result.violations) > 10:
             print(f"    ... and {len(result.violations) - 10} more")
 
+    # Build result dict for chart / JSON export
+    result_dict = {
+        "config": {
+            "strategy_name": config.strategy_name,
+            "strategy_params": config.strategy_params,
+            "instrument": config.instrument,
+            "timeframe": config.timeframe,
+            "start_date": config.start_date,
+            "end_date": config.end_date,
+            "account_tier": config.account_tier,
+            "quantity": config.quantity,
+            "slippage_ticks": config.slippage_ticks,
+            "commission": config.commission,
+        },
+        "metrics": result.metrics,
+        "trades": result.trades,
+        "equity_curve": result.equity_curve,
+        "total_bars": result.total_bars,
+        "elapsed_sec": result.elapsed_sec,
+        "violations": result.violations,
+    }
+
+    # Generate chart
+    if args.chart:
+        from backtest.visualize import plot_backtest
+        chart_path = None if args.chart == "auto" else args.chart
+        plot_backtest(result_dict, mode="plotly", output_path=chart_path)
+
     # Save JSON output
     if args.output:
         output_path = Path(args.output)
-        output_data = {
-            "config": {
-                "strategy_name": config.strategy_name,
-                "strategy_params": config.strategy_params,
-                "instrument": config.instrument,
-                "timeframe": config.timeframe,
-                "start_date": config.start_date,
-                "end_date": config.end_date,
-                "account_tier": config.account_tier,
-                "quantity": config.quantity,
-                "slippage_ticks": config.slippage_ticks,
-                "commission": config.commission,
-            },
-            "metrics": result.metrics,
-            "trades": result.trades,
-            "equity_curve": result.equity_curve,
-            "total_bars": result.total_bars,
-            "elapsed_sec": result.elapsed_sec,
-            "violations": result.violations,
-        }
         output_path.parent.mkdir(parents=True, exist_ok=True)
         with open(output_path, "w") as f:
-            json.dump(output_data, f, indent=2, default=str)
+            json.dump(result_dict, f, indent=2, default=str)
         print(f"\n  Results saved to: {output_path}")
 
     print()

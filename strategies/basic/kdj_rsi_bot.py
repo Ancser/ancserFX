@@ -168,32 +168,50 @@ class KDJRSIBot(BaseStrategy):
         tp1_pct = self.get_param("tp1_pct")
         tp2_pct = self.get_param("tp2_pct")
 
-        # Compute quantities from percentages
-        tp1_qty = max(1, round(quantity * tp1_pct / 100))
-        tp2_qty = max(1, round(quantity * tp2_pct / 100))
-        tp3_qty = quantity - tp1_qty - tp2_qty
-        if tp3_qty <= 0:
-            tp3_qty = 1
+        # Compute quantities from percentages, ensuring all levels > 0
+        if quantity == 1:
+            # Single contract: only TP1
+            tp1_qty, tp2_qty, tp3_qty = 1, 0, 0
+        elif quantity == 2:
+            # Two contracts: TP1 + TP3 (skip TP2)
+            tp1_qty, tp2_qty, tp3_qty = 1, 0, 1
+        else:
+            tp1_qty = max(1, round(quantity * tp1_pct / 100))
+            tp3_qty = max(1, quantity - tp1_qty - max(1, round(quantity * tp2_pct / 100)))
             tp2_qty = quantity - tp1_qty - tp3_qty
+            if tp2_qty <= 0:
+                # Not enough for 3 levels, use 2
+                tp2_qty = 0
+                tp3_qty = quantity - tp1_qty
 
         entry_price = bar["close"]
 
         if signal.direction == SignalDirection.LONG:
             sl_price = entry_price - sl_points
-            tp_levels = [
-                (entry_price + tp1_ticks * tick_size, tp1_qty),
-                (entry_price + tp2_ticks * tick_size, tp2_qty),
-                (entry_price + tp3_ticks * tick_size, tp3_qty),
+            tp1_price = entry_price + tp1_ticks * tick_size
+            tp2_price = entry_price + tp2_ticks * tick_size
+            tp3_price = entry_price + tp3_ticks * tick_size
+            all_levels = [
+                # (price, qty, trail_sl_to_after_hit)
+                (tp1_price, tp1_qty, entry_price),   # TP1 hit -> SL to breakeven
+                (tp2_price, tp2_qty, tp1_price),      # TP2 hit -> SL to TP1
+                (tp3_price, tp3_qty, tp2_price),      # TP3 hit -> SL to TP2
             ]
         elif signal.direction == SignalDirection.SHORT:
             sl_price = entry_price + sl_points
-            tp_levels = [
-                (entry_price - tp1_ticks * tick_size, tp1_qty),
-                (entry_price - tp2_ticks * tick_size, tp2_qty),
-                (entry_price - tp3_ticks * tick_size, tp3_qty),
+            tp1_price = entry_price - tp1_ticks * tick_size
+            tp2_price = entry_price - tp2_ticks * tick_size
+            tp3_price = entry_price - tp3_ticks * tick_size
+            all_levels = [
+                (tp1_price, tp1_qty, entry_price),   # TP1 hit -> SL to breakeven
+                (tp2_price, tp2_qty, tp1_price),      # TP2 hit -> SL to TP1
+                (tp3_price, tp3_qty, tp2_price),      # TP3 hit -> SL to TP2
             ]
         else:
             return None
+
+        # Filter out zero-quantity levels
+        tp_levels = [(p, q, t) for p, q, t in all_levels if q > 0]
 
         return OrderEvent(
             timestamp=signal.timestamp,

@@ -87,7 +87,7 @@ class OrderEvent:
     limit_price: float | None = None
     stop_loss: float | None = None
     take_profit: float | None = None
-    take_profit_levels: list[tuple[float, int]] | None = None
+    take_profit_levels: list[tuple[float, int, float | None]] | None = None
 
     def __post_init__(self) -> None:
         if self.order_type not in ("MARKET", "LIMIT"):
@@ -103,7 +103,7 @@ class OrderEvent:
                 raise ValueError(
                     "Cannot set both 'take_profit' and 'take_profit_levels'"
                 )
-            total_tp_qty = sum(qty for _, qty in self.take_profit_levels)
+            total_tp_qty = sum(qty for _, qty, *_ in self.take_profit_levels)
             if total_tp_qty != self.quantity:
                 raise ValueError(
                     f"take_profit_levels total qty ({total_tp_qty}) "
