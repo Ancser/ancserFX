@@ -25,6 +25,9 @@ data/parquet/
 # Environment
 .env
 
+# Claude Code (local settings, worktrees)
+.claude/
+
 # IDE
 .idea/
 .vscode/
@@ -46,4 +49,9 @@ Thumbs.db
 
 # Jupyter
 .ipynb_checkpoints/
+
+# Reports & private research data
 /docs
+
+# HTML report outputs
+*.html
