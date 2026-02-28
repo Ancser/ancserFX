@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "StepX Quantitative Futures Trading System"
 requires-python = ">=3.11"
 license = {text = "MIT"}
-authors = [{name = "Ancser", email = "ancser24@gmail.com"}]
+authors = [{name = "Ancser"}]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
