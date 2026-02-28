@@ -47,6 +47,8 @@ class MonteCarloResult:
     max_drawdown_stats: dict
     ruin_probability: float
     max_consec_loss_stats: dict
+    pass_probability: float = 0.0
+    pass_30d_probability: float = 0.0
     original_pnl: list[float] = field(default_factory=list)
 
 
@@ -56,6 +58,7 @@ def run_monte_carlo(
     loss_limit: float = 2_000.0,
     n_simulations: int = 1000,
     seed: int | None = None,
+    profit_target: float = 0.0,
 ) -> MonteCarloResult:
     """Run Monte Carlo trade-order simulation.
 
@@ -107,6 +110,10 @@ def run_monte_carlo(
     max_drawdowns = np.zeros(n_simulations, dtype=np.float64)
     max_consec_losses = np.zeros(n_simulations, dtype=np.int64)
     ruin_count = 0
+    pass_count = 0
+    pass_30d_count = 0
+    target_equity = initial_capital + profit_target if profit_target > 0 else 0.0
+    early_cutoff = min(n_trades + 1, 61)  # ~30 days at ~2 trades/day
 
     for sim in range(n_simulations):
         # Shuffle trade order
@@ -155,12 +162,22 @@ def run_monte_carlo(
         if blown:
             ruin_count += 1
 
+        # Pass probability tracking
+        if target_equity > 0:
+            sim_eq = all_equity[sim, :]
+            if np.any(sim_eq >= target_equity):
+                pass_count += 1
+            if np.any(sim_eq[:early_cutoff] >= target_equity):
+                pass_30d_count += 1
+
     # Compute percentile curves
     percentiles = {5: None, 25: None, 50: None, 75: None, 95: None}
     for pct in percentiles:
         percentiles[pct] = np.percentile(all_equity, pct, axis=0).tolist()
 
     ruin_prob = ruin_count / n_simulations
+    pass_prob = pass_count / n_simulations if target_equity > 0 else 0.0
+    pass_30d_prob = pass_30d_count / n_simulations if target_equity > 0 else 0.0
 
     logger.info(
         "Monte Carlo complete: ruin_prob=%.1f%%, median_final=$%.0f, "
@@ -181,6 +198,8 @@ def run_monte_carlo(
         max_drawdown_stats=_compute_stats(max_drawdowns),
         ruin_probability=ruin_prob,
         max_consec_loss_stats=_compute_stats(max_consec_losses.astype(np.float64)),
+        pass_probability=pass_prob,
+        pass_30d_probability=pass_30d_prob,
         original_pnl=trades_pnl,
     )
 

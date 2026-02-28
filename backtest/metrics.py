@@ -98,6 +98,42 @@ def compute_metrics(
     avg_loss = abs(result["avg_losing_trade"])
     result["expectancy"] = (avg_win * win_rate_frac) - (avg_loss * loss_rate_frac)
 
+    # Best Day / Consistency Rule (TopStep)
+    daily_pnl = _compute_daily_pnl(trades)
+    if daily_pnl:
+        result["best_day_pnl"] = max(daily_pnl.values())
+        result["worst_day_pnl"] = min(daily_pnl.values())
+        if net_profit > 0:
+            result["best_day_pct_of_profit"] = (result["best_day_pnl"] / net_profit) * 100.0
+        else:
+            result["best_day_pct_of_profit"] = 0.0
+        result["trading_days"] = len(daily_pnl)
+        # Payout readiness (TopStep)
+        sorted_days = sorted(daily_pnl.items())
+        consec_150 = 0
+        max_consec_150 = 0
+        for _, day_pnl in sorted_days:
+            if day_pnl >= 150:
+                consec_150 += 1
+                max_consec_150 = max(max_consec_150, consec_150)
+            else:
+                consec_150 = 0
+        result["max_consec_150_days"] = max_consec_150
+        result["payout_standard_ready"] = max_consec_150 >= 5
+        result["payout_xfa_ready"] = (
+            len(daily_pnl) >= 3
+            and net_profit > 0
+            and result.get("best_day_pct_of_profit", 100) <= 60
+        )
+    else:
+        result["best_day_pnl"] = 0.0
+        result["worst_day_pnl"] = 0.0
+        result["best_day_pct_of_profit"] = 0.0
+        result["trading_days"] = 0
+        result["max_consec_150_days"] = 0
+        result["payout_standard_ready"] = False
+        result["payout_xfa_ready"] = False
+
     # ------------------------------------------------------------------
     # Equity-curve-based metrics
     # ------------------------------------------------------------------
@@ -118,6 +154,18 @@ def compute_metrics(
         result["sharpe_ratio"] = 0.0
 
     return result
+
+
+def _compute_daily_pnl(trades: list[Trade]) -> dict[str, float]:
+    """Aggregate trade PnL by calendar date.
+
+    Returns dict of date_str -> total_pnl for that day.
+    """
+    daily: dict[str, float] = {}
+    for t in trades:
+        day_key = t.exit_time.strftime("%Y-%m-%d") if hasattr(t.exit_time, "strftime") else str(t.exit_time)[:10]
+        daily[day_key] = daily.get(day_key, 0.0) + t.pnl
+    return daily
 
 
 def _empty_metrics(initial_capital: float) -> dict:
@@ -145,6 +193,13 @@ def _empty_metrics(initial_capital: float) -> dict:
         "max_drawdown": 0.0,
         "max_drawdown_pct": 0.0,
         "sharpe_ratio": 0.0,
+        "best_day_pnl": 0.0,
+        "worst_day_pnl": 0.0,
+        "best_day_pct_of_profit": 0.0,
+        "trading_days": 0,
+        "max_consec_150_days": 0,
+        "payout_standard_ready": False,
+        "payout_xfa_ready": False,
     }
 
 
