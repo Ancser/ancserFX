@@ -38,7 +38,14 @@
       "Bash(taskkill /F /IM streamlit.exe)",
       "Bash(taskkill /F /FI \"WINDOWTITLE eq streamlit*\")",
       "Bash(netstat -ano)",
-      "Bash(findstr :8501)"
+      "Bash(findstr :8501)",
+      "Bash(tasklist)",
+      "Bash(findstr \":8501 \")",
+      "Bash(findstr \":8502 \")",
+      "Bash(taskkill //PID 13860 //F)",
+      "Bash(taskkill //PID 5400 //F)",
+      "Bash(taskkill //PID 22624 //F)",
+      "Bash(taskkill //PID 4036 //F)"
     ]
   }
 }

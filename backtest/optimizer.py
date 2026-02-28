@@ -143,7 +143,7 @@ def run_optimization(
     n_iterations: int = 100,
     target_metric: str = "sharpe_ratio",
     param_ranges: dict[str, dict] | None = None,
-    max_workers: int | None = None,
+    max_workers: int | None = -1,
     seed: int | None = None,
     progress_callback: Any = None,
 ) -> OptimizationResult:
@@ -203,11 +203,17 @@ def run_optimization(
             quantity=base_config.quantity,
             slippage_ticks=base_config.slippage_ticks,
             commission=base_config.commission,
+            circuit_breaker=base_config.circuit_breaker,
+            best_day_limit=base_config.best_day_limit,
         )
         configs.append(config)
 
     # --- 4. Run backtests ---
     all_results: list[dict] = []
+
+    # Auto-detect workers: -1 means use all CPUs
+    if max_workers == -1:
+        max_workers = min(os.cpu_count() or 4, n_iterations, 8)
 
     if max_workers and max_workers > 1:
         # Parallel execution

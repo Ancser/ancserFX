@@ -59,6 +59,8 @@ class BacktestConfig:
     quantity: int = 1
     slippage_ticks: int = 1
     commission: float = 2.50
+    circuit_breaker: bool = True  # Block orders where SL loss >= remaining DD budget
+    best_day_limit: float = 0.0  # Max single-day profit (0 = no limit)
 
 
 @dataclass
@@ -160,7 +162,11 @@ class BacktestEngine:
             commission_per_contract=config.commission,
             instrument_specs=inst_specs,
         )
-        risk_mgr = RiskManager(rules=rules, initial_capital=initial_capital)
+        risk_mgr = RiskManager(
+            rules=rules,
+            initial_capital=initial_capital,
+            best_day_limit=config.best_day_limit,
+        )
 
         # ---- 3. Strategy pre-computation ----
         strategy.on_init(df)
@@ -186,6 +192,30 @@ class BacktestEngine:
 
             if account_blown:
                 # Record equity for remaining bars (flat)
+                portfolio.update_market(bar_evt)
+                continue
+
+            # -- Proactive time-based force-close (BEFORE strategy signal) --
+            if risk_mgr.should_force_flat_now(bar_evt.timestamp, portfolio.position):
+                close_order = portfolio.force_close_order(bar_evt.timestamp)
+                if close_order is not None:
+                    broker.submit_order(close_order)
+                    broker.clear_sl_tp()
+                    strategy.on_position_closed()
+                    # Process the close order immediately on this bar
+                    close_fills = broker.process_bar(bar_evt)
+                    for fill in close_fills:
+                        portfolio.on_fill(fill, bar_index=i)
+                # Skip strategy signal — we just want to be flat
+                portfolio.update_market(bar_evt)
+                continue
+
+            # -- Best Day tracking --
+            equity_now = portfolio.get_equity()
+            risk_mgr.update_day(bar_evt.timestamp, equity_now)
+
+            # -- Best Day limit: pause trading rest of day --
+            if portfolio.position == 0 and risk_mgr.is_best_day_exceeded(equity_now):
                 portfolio.update_market(bar_evt)
                 continue
 
@@ -222,7 +252,11 @@ class BacktestEngine:
                     )
 
                 # -- Circuit breaker: skip if SL loss would blow account --
-                if order_to_submit is not None and order_to_submit.stop_loss is not None:
+                if (
+                    config.circuit_breaker
+                    and order_to_submit is not None
+                    and order_to_submit.stop_loss is not None
+                ):
                     equity = portfolio.get_equity()
                     point_value = inst_specs["tick_value"] / inst_specs["tick_size"]
                     entry_price = bar_dict["close"]
@@ -249,6 +283,7 @@ class BacktestEngine:
                 equity=equity,
                 position=portfolio.position,
                 timestamp=bar_evt.timestamp,
+                bar_index=i,
             )
 
             if rule_violations:
@@ -315,6 +350,24 @@ class BacktestEngine:
             }
             for ep in portfolio.equity_curve
         ]
+
+        # Add pass info to metrics
+        metrics["passed"] = risk_mgr.passed
+        if risk_mgr.passed and risk_mgr.pass_timestamp is not None:
+            metrics["pass_timestamp"] = str(risk_mgr.pass_timestamp)
+            metrics["pass_bar_index"] = risk_mgr.pass_bar_index
+            # Days to pass: from first bar to pass bar
+            first_ts = df.iloc[0]["timestamp"]
+            pass_ts = risk_mgr.pass_timestamp
+            metrics["days_to_pass"] = (pass_ts - first_ts.to_pydatetime()).days
+        else:
+            metrics["pass_timestamp"] = None
+            metrics["pass_bar_index"] = None
+            metrics["days_to_pass"] = None
+
+        # Circuit breaker & Best Day stats
+        metrics["circuit_breaker_blocks"] = risk_mgr.circuit_breaker_blocks
+        metrics["best_day_pauses"] = risk_mgr.best_day_pauses
 
         result = BacktestResult(
             config=config,

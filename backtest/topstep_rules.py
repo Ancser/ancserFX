@@ -25,6 +25,7 @@ class TopStepAccountRules:
     max_loss_limit: float
     max_contracts: int
     must_close_by: str = "15:10"
+    profit_target: float = 0.0  # profit needed to pass evaluation
 
 
 TOPSTEP_ACCOUNTS: dict[str, TopStepAccountRules] = {
@@ -32,15 +33,18 @@ TOPSTEP_ACCOUNTS: dict[str, TopStepAccountRules] = {
         account_size=50_000,
         max_loss_limit=2_000.0,
         max_contracts=5,
+        profit_target=3_000.0,
     ),
     "100K": TopStepAccountRules(
         account_size=100_000,
         max_loss_limit=3_000.0,
         max_contracts=10,
+        profit_target=6_000.0,
     ),
     "150K": TopStepAccountRules(
         account_size=150_000,
         max_loss_limit=4_500.0,
         max_contracts=15,
+        profit_target=9_000.0,
     ),
 }

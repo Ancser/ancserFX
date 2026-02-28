@@ -4,5 +4,5 @@ echo Starting ancserFX Dashboard...
 echo.
 echo Open browser at: http://localhost:8501
 echo.
-streamlit run dashboard.py --server.headless true
+streamlit run dashboard.py
 pause

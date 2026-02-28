@@ -1,0 +1,320 @@
+[
+  {
+    "name": "150k 最優",
+    "params": {
+      "kdj_period": 9,
+      "kdj_signal": 3,
+      "rsi_period": 14,
+      "rsi_threshold": 50.0,
+      "d_cross_level": 50.0,
+      "sl_points": 15.0,
+      "tp1_ticks": 200,
+      "tp1_pct": 60,
+      "tp2_ticks": 300,
+      "tp2_pct": 20,
+      "tp3_ticks": 500
+    },
+    "source": "manual"
+  },
+  {
+    "name": "50k MES best",
+    "params": {
+      "kdj_period": 9,
+      "kdj_signal": 3,
+      "rsi_period": 14,
+      "rsi_threshold": 50.0,
+      "d_cross_level": 50.0,
+      "sl_points": 15.0,
+      "tp1_ticks": 200,
+      "tp1_pct": 60,
+      "tp2_ticks": 300,
+      "tp2_pct": 20,
+      "tp3_ticks": 500
+    },
+    "source": "manual"
+  },
+  {
+    "name": "150K 1NQ",
+    "params": {
+      "kdj_period": 47,
+      "kdj_signal": 18,
+      "rsi_period": 76,
+      "rsi_threshold": 47.0,
+      "d_cross_level": 42.0,
+      "sl_points": 43.0,
+      "tp1_ticks": 3011,
+      "tp1_pct": 12,
+      "tp2_ticks": 3251,
+      "tp2_pct": 97,
+      "tp3_ticks": 4331
+    },
+    "source": "manual"
+  },
+  {
+    "name": "150K 1nq PASS NOT STABLE",
+    "params": {
+      "kdj_period": 47,
+      "kdj_signal": 18,
+      "rsi_period": 76,
+      "rsi_threshold": 47.0,
+      "d_cross_level": 42.0,
+      "sl_points": 43.0,
+      "tp1_ticks": 3011,
+      "tp1_pct": 12,
+      "tp2_ticks": 3251,
+      "tp2_pct": 97,
+      "tp3_ticks": 4331
+    },
+    "source": "manual"
+  },
+  {
+    "name": "Opt#1 (sharpe_ratio=0.1560, 11 trades)",
+    "params": {
+      "kdj_period": 47,
+      "kdj_signal": 18,
+      "rsi_period": 76,
+      "rsi_threshold": 47.0,
+      "d_cross_level": 42.0,
+      "sl_points": 43.0,
+      "tp1_ticks": 3011,
+      "tp1_pct": 12,
+      "tp2_ticks": 3251,
+      "tp2_pct": 97,
+      "tp3_ticks": 4331
+    },
+    "metrics_summary": {
+      "net_profit": 9992.5,
+      "win_rate": 36.36363636363637,
+      "profit_factor": 3.2774928774928775,
+      "sharpe_ratio": 0.15603085177281767,
+      "max_drawdown": 3162.5,
+      "total_trades": 11
+    },
+    "source": "optimizer"
+  },
+  {
+    "name": "Opt#2 (sharpe_ratio=0.1172, 52 trades)",
+    "params": {
+      "kdj_period": 5,
+      "kdj_signal": 16,
+      "rsi_period": 58,
+      "rsi_threshold": 52.0,
+      "d_cross_level": 54.0,
+      "sl_points": 31.0,
+      "tp1_ticks": 3171,
+      "tp1_pct": 61,
+      "tp2_ticks": 151,
+      "tp2_pct": 35,
+      "tp3_ticks": 2181
+    },
+    "metrics_summary": {
+      "net_profit": 15055.0,
+      "win_rate": 21.153846153846153,
+      "profit_factor": 1.6462066745358943,
+      "sharpe_ratio": 0.11722789369311323,
+      "max_drawdown": 13665.0,
+      "total_trades": 52
+    },
+    "source": "optimizer"
+  },
+  {
+    "name": "Opt#3 (sharpe_ratio=0.0959, 104 trades)",
+    "params": {
+      "kdj_period": 29,
+      "kdj_signal": 10,
+      "rsi_period": 52,
+      "rsi_threshold": 36.0,
+      "d_cross_level": 27.0,
+      "sl_points": 67.0,
+      "tp1_ticks": 2841,
+      "tp1_pct": 66,
+      "tp2_ticks": 2351,
+      "tp2_pct": 86,
+      "tp3_ticks": 2821
+    },
+    "metrics_summary": {
+      "net_profit": 19465.0,
+      "win_rate": 38.46153846153847,
+      "profit_factor": 1.2767076551282963,
+      "sharpe_ratio": 0.09590795976501296,
+      "max_drawdown": 18270.0,
+      "total_trades": 104
+    },
+    "source": "optimizer"
+  },
+  {
+    "name": "Opt#4 (sharpe_ratio=0.0835, 52 trades)",
+    "params": {
+      "kdj_period": 18,
+      "kdj_signal": 2,
+      "rsi_period": 12,
+      "rsi_threshold": 59.0,
+      "d_cross_level": 48.0,
+      "sl_points": 17.0,
+      "tp1_ticks": 451,
+      "tp1_pct": 91,
+      "tp2_ticks": 2501,
+      "tp2_pct": 94,
+      "tp3_ticks": 761
+    },
+    "metrics_summary": {
+      "net_profit": 5530.0,
+      "win_rate": 23.076923076923077,
+      "profit_factor": 1.4557066337041615,
+      "sharpe_ratio": 0.08345098615213932,
+      "max_drawdown": 5807.5,
+      "total_trades": 52
+    },
+    "source": "optimizer"
+  },
+  {
+    "name": "Opt#5 (sharpe_ratio=0.0664, 15 trades)",
+    "params": {
+      "kdj_period": 39,
+      "kdj_signal": 8,
+      "rsi_period": 47,
+      "rsi_threshold": 64.0,
+      "d_cross_level": 59.0,
+      "sl_points": 80.5,
+      "tp1_ticks": 2671,
+      "tp1_pct": 56,
+      "tp2_ticks": 2661,
+      "tp2_pct": 77,
+      "tp3_ticks": 3161
+    },
+    "metrics_summary": {
+      "net_profit": 6412.5,
+      "win_rate": 46.666666666666664,
+      "profit_factor": 1.7121043864519712,
+      "sharpe_ratio": 0.06644187709360483,
+      "max_drawdown": 7505.0,
+      "total_trades": 15
+    },
+    "source": "optimizer"
+  },
+  {
+    "name": "Opt#6 (sharpe_ratio=0.0648, 21 trades)",
+    "params": {
+      "kdj_period": 49,
+      "kdj_signal": 8,
+      "rsi_period": 22,
+      "rsi_threshold": 42.0,
+      "d_cross_level": 51.0,
+      "sl_points": 26.5,
+      "tp1_ticks": 4761,
+      "tp1_pct": 100,
+      "tp2_ticks": 4681,
+      "tp2_pct": 19,
+      "tp3_ticks": 821
+    },
+    "metrics_summary": {
+      "net_profit": 4527.5,
+      "win_rate": 19.047619047619047,
+      "profit_factor": 1.4973908266959626,
+      "sharpe_ratio": 0.06475209084126049,
+      "max_drawdown": 4502.5,
+      "total_trades": 21
+    },
+    "source": "optimizer"
+  },
+  {
+    "name": "Opt#7 (sharpe_ratio=0.0647, 6 trades)",
+    "params": {
+      "kdj_period": 36,
+      "kdj_signal": 8,
+      "rsi_period": 8,
+      "rsi_threshold": 66.0,
+      "d_cross_level": 67.0,
+      "sl_points": 20.5,
+      "tp1_ticks": 4851,
+      "tp1_pct": 37,
+      "tp2_ticks": 2331,
+      "tp2_pct": 50,
+      "tp3_ticks": 211
+    },
+    "metrics_summary": {
+      "net_profit": 2580.0,
+      "win_rate": 33.33333333333333,
+      "profit_factor": 2.573170731707317,
+      "sharpe_ratio": 0.06471593684656227,
+      "max_drawdown": 4152.5,
+      "total_trades": 6
+    },
+    "source": "optimizer"
+  },
+  {
+    "name": "Opt#8 (sharpe_ratio=0.0551, 23 trades)",
+    "params": {
+      "kdj_period": 28,
+      "kdj_signal": 4,
+      "rsi_period": 75,
+      "rsi_threshold": 60.0,
+      "d_cross_level": 78.0,
+      "sl_points": 33.5,
+      "tp1_ticks": 3411,
+      "tp1_pct": 91,
+      "tp2_ticks": 1851,
+      "tp2_pct": 8,
+      "tp3_ticks": 2341
+    },
+    "metrics_summary": {
+      "net_profit": 4202.5,
+      "win_rate": 21.73913043478261,
+      "profit_factor": 1.4128192534381139,
+      "sharpe_ratio": 0.05513486844531544,
+      "max_drawdown": 8997.5,
+      "total_trades": 23
+    },
+    "source": "optimizer"
+  },
+  {
+    "name": "Opt#9 (sharpe_ratio=0.0390, 23 trades)",
+    "params": {
+      "kdj_period": 17,
+      "kdj_signal": 13,
+      "rsi_period": 15,
+      "rsi_threshold": 56.0,
+      "d_cross_level": 25.0,
+      "sl_points": 42.0,
+      "tp1_ticks": 2921,
+      "tp1_pct": 79,
+      "tp2_ticks": 201,
+      "tp2_pct": 18,
+      "tp3_ticks": 2461
+    },
+    "metrics_summary": {
+      "net_profit": 3562.5,
+      "win_rate": 30.434782608695656,
+      "profit_factor": 1.2793022344178753,
+      "sharpe_ratio": 0.03900505455207156,
+      "max_drawdown": 8452.5,
+      "total_trades": 23
+    },
+    "source": "optimizer"
+  },
+  {
+    "name": "Opt#10 (sharpe_ratio=0.0286, 6 trades)",
+    "params": {
+      "kdj_period": 38,
+      "kdj_signal": 4,
+      "rsi_period": 83,
+      "rsi_threshold": 51.0,
+      "d_cross_level": 71.0,
+      "sl_points": 47.0,
+      "tp1_ticks": 2681,
+      "tp1_pct": 79,
+      "tp2_ticks": 1921,
+      "tp2_pct": 69,
+      "tp3_ticks": 3191
+    },
+    "metrics_summary": {
+      "net_profit": 1245.0,
+      "win_rate": 33.33333333333333,
+      "profit_factor": 1.4337979094076656,
+      "sharpe_ratio": 0.028624160027770962,
+      "max_drawdown": 3577.5,
+      "total_trades": 6
+    },
+    "source": "optimizer"
+  }
+]
