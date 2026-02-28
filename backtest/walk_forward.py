@@ -345,12 +345,16 @@ def run_walk_forward(
         opt_t0 = time.perf_counter()
         seed = (config.opt_seed + i) if config.opt_seed is not None else None
         try:
+            # Use sequential execution (max_workers=None) to avoid
+            # multiprocessing issues on Windows when called from scripts
+            # or Streamlit. The per-window loop is already the outer
+            # parallelism boundary.
             opt_result = run_optimization(
                 base_config=train_config,
                 n_iterations=config.opt_iterations,
                 target_metric=config.opt_target_metric,
                 seed=seed,
-                max_workers=-1,
+                max_workers=None,
             )
         except Exception as e:
             logger.error("WFA window %d: optimization failed: %s", i + 1, e)
