@@ -9,28 +9,66 @@ Supports ES / NQ / MES / MNQ futures with strategy backtesting, parameter optimi
 ## Requirements
 
 - Python >= 3.11
-- Windows / macOS / Linux
+
+---
 
 ## Installation
 
-```bash
-# 1. Clone the repository
+### Windows
+
+```bat
 git clone https://github.com/ancser/ancserFX.git
 cd ancserFX
-
-# 2. Create virtual environment (recommended)
-python -m venv .venv
-# Windows
-.venv\Scripts\activate
-# macOS / Linux
-source .venv/bin/activate
-
-# 3. Install dependencies
 pip install -r requirements.txt
-
-# 4. Install dashboard dependencies (if not already included)
-pip install streamlit plotly kagglehub
 ```
+
+啟動 Dashboard：
+
+```bat
+start_dashboard.bat
+```
+
+或手動：
+
+```bat
+streamlit run dashboard.py
+```
+
+### macOS / Linux
+
+```bash
+git clone https://github.com/ancser/ancserFX.git
+cd ancserFX
+pip install -r requirements.txt
+```
+
+啟動 Dashboard：
+
+```bash
+streamlit run dashboard.py
+```
+
+### Environment Config
+
+複製環境變量範例並填入你的 API keys：
+
+```bash
+cp .env.example .env
+```
+
+`.env` 内容：
+
+```
+PROJECTX_USERNAME=your_username
+PROJECTX_API_KEY=your_api_key
+KAGGLE_USERNAME=your_kaggle_username
+KAGGLE_KEY=your_kaggle_api_key
+```
+
+> Kaggle key 只有下載數據時才需要。TopStepX key 只有實盤連接時才需要。
+> 回測和 Dashboard 不需要任何 API key。
+
+---
 
 ## Data Setup
 
@@ -44,32 +82,22 @@ data/
 
 ### Download Data from Kaggle
 
-Requires Kaggle API credentials. Place `kaggle.json` in `~/.kaggle/` or set `KAGGLE_USERNAME` / `KAGGLE_KEY` in `.env`.
-
 ```bash
 # List available datasets
 python -m scripts.download_kaggle --list
 
-# Download ES OHLCV data
+# Download ES / NQ data
 python -m scripts.download_kaggle --dataset es
-
-# Download NQ CME data
 python -m scripts.download_kaggle --dataset nq-cme
 
 # Download all futures data
 python -m scripts.download_kaggle --dataset all-futures
-
-# Download LOB (Limit Order Book) research data
-python -m scripts.download_kaggle --dataset lob
 ```
 
 ### Convert CSV to Parquet
 
 ```bash
-# Auto-detect CSVs in data/raw/es/ and convert
 python -m scripts.convert_to_parquet --instrument es
-
-# Specify custom paths and timeframe
 python -m scripts.convert_to_parquet --instrument nq --timeframe 1min
 ```
 
@@ -83,87 +111,100 @@ python -m scripts.convert_to_parquet --instrument nq --timeframe 1min
 streamlit run dashboard.py
 ```
 
-Dashboard features:
-
 | Tab | Description |
 |-----|-------------|
-| **Backtest** | Run single-period backtest with equity curve, metrics, drawdown chart |
-| **Monte Carlo** | Shuffle trades 1000x, measure ruin probability and pass probability |
-| **Optimize** | Random parameter search with parallel execution and heatmaps |
-| **WFA** | Walk-Forward Analysis with rolling train/test windows |
-| **Trades** | Full trade log with entry/exit details |
-| **K-line Chart** | Candlestick chart with trade markers |
+| **Backtest** | 單次回測：權益曲線、績效指標、回撤圖 |
+| **Monte Carlo** | 打亂交易順序 1000 次，測量爆倉概率和通關概率 |
+| **Optimize** | 隨機參數搜索，找最優參數組合 |
+| **WFA** | 前推分析：滾動訓練/測試窗口，防止過擬合 |
+| **Trades** | 完整交易記錄 |
+| **K-line Chart** | K 線圖 + 交易標記 |
 
 Sidebar controls:
-- Instrument (ES / NQ / MES / MNQ), Timeframe, Date range
-- Strategy selection and parameter tuning
-- TopStep account tier (50K / 100K / 150K)
-- Quantity, slippage, commission settings
-- **Data Calendar** — GitHub-style heatmap showing data availability by instrument and month
-- WFA settings (train days, test days, step days, warmup bars)
+- 合約 (ES / NQ / MES / MNQ)、時間周期、日期範圍
+- 策略選擇和參數調整
+- TopStep 帳戶等級 (50K / 100K / 150K)
+- 數量、滑點、手續費
+- **Data Calendar** — 綠色日曆顯示各合約的數據覆蓋範圍
+- WFA 設置 (訓練天數、測試天數、步進天數)
 
-### TopStep Account Rules
+### CLI Backtest
 
-| Account | Balance | Max Drawdown | Max Contracts | Profit Target |
-|---------|---------|-------------|---------------|---------------|
-| 50K     | $50,000 | $2,000      | 5             | $3,000        |
-| 100K    | $100,000| $3,000      | 10            | $6,000        |
-| 150K    | $150,000| $4,500      | 15            | $9,000        |
+```bash
+# Single backtest
+python run_backtest.py --strategy "Delta Momentum" --instrument ES --timeframe 5min
+
+# With custom params
+python run_backtest.py --strategy "KDJ RSI Bot" --instrument MES --account 50K \
+    --param sl_points=15 --param tp1_ticks=200
+```
+
+### CLI Research (Optimize + Monte Carlo)
+
+```bash
+# Optimize only
+python run_research.py optimize \
+    --strategy "KDJ RSI Bot" --instrument MES --account 50K \
+    --iterations 100 --target sharpe_ratio
+
+# Monte Carlo only
+python run_research.py monte-carlo \
+    --strategy "KDJ RSI Bot" --instrument MES --account 50K \
+    --simulations 1000
+
+# Full pipeline: optimize → backtest best → Monte Carlo
+python run_research.py full \
+    --strategy "KDJ RSI Bot" --instrument MES --account 50K \
+    --iterations 100 --simulations 1000
+```
+
+---
+
+## TopStep Account Rules
+
+| Account | Balance | Max Trailing DD | Max Contracts | Profit Target |
+|---------|---------|----------------|---------------|---------------|
+| 50K     | $50,000 | $2,000         | 5             | $3,000        |
+| 100K    | $100,000| $3,000         | 10            | $6,000        |
+| 150K    | $150,000| $4,500         | 15            | $9,000        |
 
 ---
 
 ## Strategies
 
-### Built-in Strategies
-
 | Strategy | Type | Description |
 |----------|------|-------------|
-| `delta_momentum` | Orderflow | Cumulative delta EMA + volume imbalance to detect institutional flow |
-| `sma_crossover` | Basic | Simple / Exponential moving average crossover |
-| `rsi_mean_reversion` | Basic | RSI overbought/oversold mean reversion |
-| `kdj_rsi_bot` | Basic | KDJ + RSI combination signal |
+| `Delta Momentum` | Orderflow | 累積 Delta EMA + Volume Imbalance 偵測機構資金流 |
+| `SMA Crossover` | Basic | 均線交叉 |
+| `RSI Mean Reversion` | Basic | RSI 超買超賣均值回歸 |
+| `KDJ RSI Bot` | Basic | KDJ + RSI 組合信號 |
 
-Strategies are auto-registered via `strategies/registry.py`. Add new strategies under `strategies/basic/` or `strategies/orderflow/`.
+Strategies are auto-registered via `strategies/registry.py`.
 
 ### Presets
 
-Pre-optimized parameter sets are stored in `presets/`:
-```
-presets/
-  delta_momentum_presets.json
-  rsi_mean_reversion_presets.json
-  kdj_rsi_bot_presets.json
-```
+`presets/` 存放示例參數。運行 Optimizer 後 Dashboard 會自動保存最優結果到此目錄。
 
 ---
 
 ## Walk-Forward Analysis (WFA)
 
-WFA prevents overfitting by using rolling train/test windows:
+防止過擬合的滾動前推驗證：
 
 ```
 Window 1:  [===== Train =====][== Test ==]
 Window 2:       [===== Train =====][== Test ==]
 Window 3:            [===== Train =====][== Test ==]
-...
 ```
 
-Each window:
-1. **Train** — Run parameter optimization on training period
-2. **Test** — Apply best parameters to unseen test period
-3. **Stitch** — Chain all test-period equity curves for honest evaluation
+1. **Train** — 在訓練期優化參數
+2. **Test** — 用最優參數在未見過的測試期驗證
+3. **Stitch** — 串聯所有測試期權益曲線
 
 Key metrics:
-- **WF Efficiency** = test_metric / train_metric (closer to 1.0 = less overfit)
-- **Parameter Stability** = coefficient of variation per parameter across windows
-- **Window Consistency** = fraction of windows with positive test profit
-
-### Run WFA from Dashboard
-
-1. Open sidebar → WFA settings expander
-2. Set train/test/step days (e.g., 60/14/14)
-3. Click "前推 WFA" button
-4. View results in the WFA tab
+- **WF Efficiency** = test / train metric (越接近 1.0 = 越不過擬合)
+- **Parameter Stability** = 各窗口參數的變異係數
+- **Window Consistency** = 測試期盈利的窗口占比
 
 ---
 
@@ -171,42 +212,43 @@ Key metrics:
 
 ```
 ancserFX/
-├── dashboard.py              # Streamlit interactive dashboard
+├── dashboard.py              # Streamlit Dashboard
+├── run_backtest.py           # CLI 回測入口
+├── run_research.py           # CLI 優化 + Monte Carlo
+├── start_dashboard.bat       # Windows 一鍵啟動
 ├── requirements.txt
-├── pyproject.toml
+├── .env.example              # 環境變量範例
 │
 ├── backtest/
-│   ├── engine.py             # Core backtest engine
-│   ├── optimizer.py          # Random parameter optimization
-│   ├── walk_forward.py       # Walk-Forward Analysis
-│   ├── monte_carlo.py        # Monte Carlo simulation
-│   ├── metrics.py            # Performance metrics calculation
-│   ├── topstep_rules.py      # TopStep account rules (50K/100K/150K)
-│   ├── risk.py               # Risk management
-│   ├── broker.py             # Order execution simulation
-│   ├── events.py             # Event system
-│   ├── portfolio.py          # Portfolio tracking
-│   └── visualize.py          # Chart generation
+│   ├── engine.py             # 回測引擎
+│   ├── optimizer.py          # 隨機參數優化
+│   ├── walk_forward.py       # 前推分析 WFA
+│   ├── monte_carlo.py        # Monte Carlo 模擬
+│   ├── metrics.py            # 績效指標計算
+│   ├── topstep_rules.py      # TopStep 帳戶規則
+│   ├── risk.py               # 風險管理
+│   ├── broker.py             # 訂單執行模擬
+│   ├── events.py             # 事件系統
+│   ├── portfolio.py          # 組合追蹤
+│   └── visualize.py          # 圖表生成
 │
 ├── strategies/
-│   ├── base.py               # Base strategy class
-│   ├── registry.py           # Strategy auto-registration
-│   ├── indicators.py         # Technical indicators (EMA, delta, imbalance)
-│   ├── basic/                # Basic strategies (SMA, RSI, KDJ)
-│   └── orderflow/            # Order flow strategies (Delta Momentum)
+│   ├── base.py               # 策略基類
+│   ├── registry.py           # 策略自動註冊
+│   ├── indicators.py         # 技術指標 (EMA, Delta, Imbalance)
+│   ├── basic/                # 基礎策略 (SMA, RSI, KDJ)
+│   └── orderflow/            # Order Flow 策略
 │
 ├── data/
-│   ├── store.py              # Parquet data store
-│   ├── loader.py             # Data loading facade
-│   └── models.py             # Instrument specs, timeframes, data models
+│   ├── store.py              # Parquet 數據存儲
+│   ├── loader.py             # 數據加載
+│   └── models.py             # 合約規格、時間周期
 │
 ├── scripts/
-│   ├── download_kaggle.py    # Kaggle dataset downloader
-│   └── convert_to_parquet.py # CSV → Parquet converter
+│   ├── download_kaggle.py    # Kaggle 數據下載
+│   └── convert_to_parquet.py # CSV → Parquet 轉換
 │
-├── presets/                   # Pre-optimized strategy parameters
-├── api/                       # FastAPI endpoints (WIP)
-└── execution/                 # Live execution module (WIP)
+└── presets/                   # 策略參數預設
 ```
 
 ---
@@ -220,9 +262,7 @@ ancserFX/
 | MES    | Micro E-mini S&P | 0.25 | $1.25 |
 | MNQ    | Micro E-mini Nasdaq | 0.25 | $0.50 |
 
-## Supported Timeframes
-
-`tick` · `1min` · `5min` · `15min` · `1h` · `daily`
+**Timeframes:** `tick` · `1min` · `5min` · `15min` · `1h` · `daily`
 
 ---
 
