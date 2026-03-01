@@ -99,11 +99,11 @@ class BacktestEngine:
     def __init__(self, data_loader: DataLoader | None = None) -> None:
         self._loader = data_loader or DataLoader()
 
-    def run(self, config: BacktestConfig) -> BacktestResult:
+    def run(self, config: BacktestConfig, preloaded_df: "pd.DataFrame | None" = None) -> BacktestResult:
         """Execute a full backtest and return the results.
 
         Steps:
-            1. Load bar data via DataLoader.
+            1. Load bar data via DataLoader (or use preloaded_df).
             2. Instantiate strategy, broker, portfolio, risk manager.
             3. Call strategy.on_init() for pre-computation.
             4. Iterate bars: emit MarketEvent -> strategy -> portfolio -> broker.
@@ -111,7 +111,9 @@ class BacktestEngine:
             6. At end: force-close any open position, compute metrics.
 
         Args:
-            config: Backtest configuration.
+            config:       Backtest configuration.
+            preloaded_df: Optional pre-loaded DataFrame to skip I/O.
+                          Will be sliced by config start/end dates.
 
         Returns:
             BacktestResult with metrics, trades, equity curve, etc.
@@ -119,12 +121,22 @@ class BacktestEngine:
         t0 = _time.perf_counter()
 
         # ---- 1. Load data ----
-        df = self._loader.get_bars(
-            instrument=config.instrument,
-            timeframe=config.timeframe,
-            start_date=config.start_date,
-            end_date=config.end_date,
-        )
+        if preloaded_df is not None:
+            df = preloaded_df
+            if "timestamp" in df.columns:
+                mask = pd.Series(True, index=df.index)
+                if config.start_date:
+                    mask &= df["timestamp"] >= pd.to_datetime(config.start_date)
+                if config.end_date:
+                    mask &= df["timestamp"] <= pd.to_datetime(config.end_date) + pd.Timedelta(days=1)
+                df = df.loc[mask].reset_index(drop=True)
+        else:
+            df = self._loader.get_bars(
+                instrument=config.instrument,
+                timeframe=config.timeframe,
+                start_date=config.start_date,
+                end_date=config.end_date,
+            )
         if df.empty:
             raise ValueError(
                 f"No data found for {config.instrument}/{config.timeframe}"
