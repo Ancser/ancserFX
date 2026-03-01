@@ -20,18 +20,8 @@ Supports ES / NQ / MES / MNQ futures with strategy backtesting, parameter optimi
 git clone https://github.com/ancser/ancserFX.git
 cd ancserFX
 pip install -r requirements.txt
-```
-
-啟動 Dashboard：
-
-```bat
+download_data.bat
 start_dashboard.bat
-```
-
-或手動：
-
-```bat
-streamlit run dashboard.py
 ```
 
 ### macOS / Linux
@@ -40,11 +30,7 @@ streamlit run dashboard.py
 git clone https://github.com/ancser/ancserFX.git
 cd ancserFX
 pip install -r requirements.txt
-```
-
-啟動 Dashboard：
-
-```bash
+bash download_data.sh
 streamlit run dashboard.py
 ```
 
@@ -72,33 +58,30 @@ KAGGLE_KEY=your_kaggle_api_key
 
 ## Data Setup
 
-### Directory Structure
+Repo 內含 `test-data.zip` (ES / NQ / MES / MNQ parquet)，首次使用解壓即可，不需要任何 API key。
 
-```
-data/
-  raw/         ← downloaded CSV files (from Kaggle or other sources)
-  parquet/     ← converted bar data (auto-managed by DataStore)
+**Windows:**
+
+```bat
+download_data.bat
 ```
 
-### Download Data from Kaggle
+**macOS / Linux:**
 
 ```bash
-# List available datasets
-python -m scripts.download_kaggle --list
-
-# Download ES / NQ data
-python -m scripts.download_kaggle --dataset es
-python -m scripts.download_kaggle --dataset nq-cme
-
-# Download all futures data
-python -m scripts.download_kaggle --dataset all-futures
+bash download_data.sh
 ```
 
-### Convert CSV to Parquet
+解壓後 `data/parquet/` 結構：
 
-```bash
-python -m scripts.convert_to_parquet --instrument es
-python -m scripts.convert_to_parquet --instrument nq --timeframe 1min
+```
+data/parquet/
+  es/5min/data.parquet
+  es/daily/data.parquet
+  es/tick/data.parquet
+  mes/5min/data.parquet
+  mnq/5min/data.parquet
+  nq/5min/data.parquet
 ```
 
 ---
@@ -216,6 +199,9 @@ ancserFX/
 ├── run_backtest.py           # CLI 回測入口
 ├── run_research.py           # CLI 優化 + Monte Carlo
 ├── start_dashboard.bat       # Windows 一鍵啟動
+├── download_data.bat         # Windows 解壓測試數據
+├── download_data.sh          # macOS/Linux 解壓測試數據
+├── test-data.zip             # 預轉換 parquet 測試數據
 ├── requirements.txt
 ├── .env.example              # 環境變量範例
 │

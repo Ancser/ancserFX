@@ -113,14 +113,14 @@ def _generate_random_params(
     return samples
 
 
-def _run_single_backtest(config: BacktestConfig) -> dict:
+def _run_single_backtest(config: BacktestConfig, preloaded_df=None) -> dict:
     """Run a single backtest and return params + metrics.
 
     This function is designed to be called from a process pool.
     """
     try:
         engine = BacktestEngine()
-        result = engine.run(config)
+        result = engine.run(config, preloaded_df=preloaded_df)
         return {
             "params": config.strategy_params,
             "metrics": result.metrics,
@@ -146,6 +146,7 @@ def run_optimization(
     max_workers: int | None = -1,
     seed: int | None = None,
     progress_callback: Any = None,
+    preloaded_df=None,
 ) -> OptimizationResult:
     """Run random parameter optimization.
 
@@ -235,7 +236,7 @@ def run_optimization(
     else:
         # Sequential execution
         for i, cfg in enumerate(configs):
-            result = _run_single_backtest(cfg)
+            result = _run_single_backtest(cfg, preloaded_df=preloaded_df)
             all_results.append(result)
             if progress_callback:
                 progress_callback(i + 1, n_iterations)

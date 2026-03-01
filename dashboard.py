@@ -111,7 +111,7 @@ BEST_DAY_LIMITS = {
 # ---------------------------------------------------------------------------
 st.set_page_config(
     page_title="ancserFX Dashboard",
-    page_icon="📊",
+    page_icon="",
     layout="wide",
     initial_sidebar_state="expanded",
 )
@@ -174,8 +174,8 @@ def _build_data_calendar() -> pd.DataFrame:
 
 def _render_data_calendar(cal_df: pd.DataFrame, selected_tf: str | None = None):
     """Render a compact data availability heatmap in the sidebar."""
-    if cal_df.empty:
-        st.caption("📅 無數據")
+    if cal_df.empty or "timeframe" not in cal_df.columns:
+        st.caption("無數據 - 請先下載: python -m scripts.download_kaggle --list")
         return
 
     # Filter by selected timeframe if given
@@ -185,7 +185,7 @@ def _render_data_calendar(cal_df: pd.DataFrame, selected_tf: str | None = None):
         filtered = cal_df
 
     if filtered.empty:
-        st.caption(f"📅 {selected_tf} 無可用數據")
+        st.caption(f"{selected_tf} 無可用數據")
         return
 
     # Pivot: rows = instrument, columns = month
@@ -234,6 +234,8 @@ def _render_data_calendar(cal_df: pd.DataFrame, selected_tf: str | None = None):
 
 def _get_data_date_range(cal_df: pd.DataFrame, instrument: str, timeframe: str) -> tuple[str, str]:
     """Return (first_month, last_month) for a specific instrument+timeframe."""
+    if cal_df.empty or "instrument" not in cal_df.columns:
+        return "", ""
     sub = cal_df[(cal_df["instrument"] == instrument) & (cal_df["timeframe"] == timeframe)]
     if sub.empty:
         return "", ""
@@ -336,10 +338,10 @@ account_tier = st.sidebar.selectbox("賬戶 Account", ["50K", "100K", "150K"], i
 rules = TOPSTEP_ACCOUNTS.get(account_tier)
 best_day_limit = BEST_DAY_LIMITS.get(account_tier, 1500)
 st.sidebar.caption(
-    f"💰 ${rules.account_size:,.0f} | "
-    f"🔴 回撤限制 ${rules.max_loss_limit:,.0f} | "
-    f"📊 最大合約 {rules.max_contracts} | "
-    f"⚡ Best Day < ${best_day_limit:,.0f}"
+    f"${rules.account_size:,.0f} | "
+    f"回撤限制 ${rules.max_loss_limit:,.0f} | "
+    f"最大合約 {rules.max_contracts} | "
+    f"Best Day < ${best_day_limit:,.0f}"
 )
 
 # Quantity
@@ -352,7 +354,7 @@ timeframe = st.sidebar.selectbox("週期 Timeframe", available_tfs, index=tf_def
 
 # Data availability calendar
 _cal_df = _build_data_calendar()
-with st.sidebar.expander("📅 數據日曆 Data Calendar", expanded=False):
+with st.sidebar.expander("Data Calendar", expanded=False):
     _render_data_calendar(_cal_df, selected_tf=timeframe)
     _auto_start, _auto_end = _get_data_date_range(_cal_df, instrument, timeframe)
     if _auto_start:
@@ -372,8 +374,8 @@ commission = col_s2.number_input("手續費 Commission", min_value=0.0, max_valu
 
 # Risk controls
 col_r1, col_r2 = st.sidebar.columns(2)
-circuit_breaker = col_r1.checkbox("🔌 斷路器 CB", value=True, help="開啟=SL虧損>=剩餘預算時拒單; 關閉=允許冒險交易")
-use_best_day = col_r2.checkbox("📅 Best Day", value=True, help="單日盈利超限自動暫停當天交易")
+circuit_breaker = col_r1.checkbox("斷路器 CB", value=True, help="開啟=SL虧損>=剩餘預算時拒單; 關閉=允許冒險交易")
+use_best_day = col_r2.checkbox("Best Day", value=True, help="單日盈利超限自動暫停當天交易")
 best_day_val = float(best_day_limit) if use_best_day else 0.0
 
 # ---------------------------------------------------------------------------
@@ -385,8 +387,8 @@ st.sidebar.subheader("策略參數 Strategy Params")
 # Show badge + clear button when optimizer params are active
 if st.session_state.active_params:
     _ap_col1, _ap_col2 = st.sidebar.columns([3, 1])
-    _ap_col1.success("🏆 優化最佳參數已加載")
-    if _ap_col2.button("✖", help="清除優化參數，恢復默認 Clear optimizer params"):
+    _ap_col1.success("優化最佳參數已加載")
+    if _ap_col2.button("X", help="清除優化參數，恢復默認 Clear optimizer params"):
         st.session_state.active_params = None
         st.rerun()
 
@@ -435,7 +437,7 @@ def _render_slider(pname, pinfo, container):
 
 # Render grouped parameters in expandable cards
 for group_label, group_param_names in groups.items():
-    with st.sidebar.expander(f"📦 {group_label}", expanded=True):
+    with st.sidebar.expander(group_label, expanded=True):
         for pname in group_param_names:
             if pname in params_dict:
                 strategy_params[pname] = _render_slider(pname, params_dict[pname], st)
@@ -451,7 +453,7 @@ if ungrouped:
 st.sidebar.markdown("---")
 col_save1, col_save2 = st.sidebar.columns([3, 1])
 preset_save_name = col_save1.text_input("保存名稱 Preset Name", value="", placeholder="My Preset")
-if col_save2.button("💾", help="保存當前參數為預設"):
+if col_save2.button("Save", help="保存當前參數為預設"):
     if preset_save_name.strip():
         existing = _load_presets(strat_name)
         existing.append({
@@ -491,20 +493,20 @@ def _build_config(params_override: dict | None = None) -> BacktestConfig:
 st.sidebar.markdown("---")
 
 col_btn1, col_btn2 = st.sidebar.columns(2)
-run_bt = col_btn1.button("▶ 回測 Backtest", type="primary", use_container_width=True)
-run_mc = col_btn2.button("🎲 蒙特卡洛 MC", use_container_width=True)
+run_bt = col_btn1.button("Backtest", type="primary", use_container_width=True)
+run_mc = col_btn2.button("Monte Carlo", use_container_width=True)
 
 col_btn3, col_btn4 = st.sidebar.columns(2)
-run_opt = col_btn3.button("🔍 優化 Optimize", use_container_width=True)
-run_full = col_btn4.button("🚀 全流程 Full", use_container_width=True)
+run_opt = col_btn3.button("Optimize", use_container_width=True)
+run_full = col_btn4.button("Full Flow", use_container_width=True)
 
 col_btn5, col_btn6 = st.sidebar.columns(2)
-run_wfa = col_btn5.button("🔄 前推 WFA", use_container_width=True)
+run_wfa = col_btn5.button("WFA", use_container_width=True)
 # Placeholder for future button
 col_btn6.empty()
 
 # MC / Opt settings
-with st.sidebar.expander("⚙️ 高級設置 MC/Opt Settings"):
+with st.sidebar.expander("MC/Opt Settings"):
     mc_simulations = st.number_input("MC模擬次數 Simulations", min_value=100, max_value=10000, value=1000, step=100)
     opt_iterations = st.number_input("優化迭代 Opt Iterations", min_value=10, max_value=500, value=50, step=10)
     opt_target = st.selectbox("優化目標 Target", ["sharpe_ratio", "net_profit", "profit_factor", "win_rate", "max_drawdown"])
@@ -512,7 +514,7 @@ with st.sidebar.expander("⚙️ 高級設置 MC/Opt Settings"):
     random_seed = st.number_input("隨機種子 Seed", min_value=0, max_value=99999, value=42)
 
 # WFA settings
-with st.sidebar.expander("🔄 前推設置 WFA Settings"):
+with st.sidebar.expander("WFA Settings"):
     wfa_train_days = st.number_input("訓練天數 Train Days", min_value=30, max_value=730, value=180, step=30,
                                       help="每個窗口用於優化的天數")
     wfa_test_days = st.number_input("測試天數 Test Days", min_value=7, max_value=120, value=30, step=7,
@@ -603,7 +605,7 @@ if run_opt:
     # Auto-load best params into sidebar
     _best = next((r for r in opt.all_results if r["metrics"].get("total_trades", 0) >= opt_min_trades), None)
     st.session_state.active_params = _best["params"] if _best else opt.best_params
-    st.toast(f"✅ 優化完成！已保存 {n_saved} 個預設，參數已加載到側欄")
+    st.toast(f"優化完成! 已保存 {n_saved} 個預設，參數已加載到側欄")
     st.rerun()
 
 if run_full:
@@ -655,7 +657,7 @@ if run_full:
 
     if trades_pnl:
         _run_monte_carlo(trades_pnl)
-    progress.progress(100, text="✅ 全部完成！")
+    progress.progress(100, text="Done!")
 
     # Auto-load best params into sidebar sliders
     st.session_state.active_params = best_params
@@ -686,8 +688,8 @@ if run_wfa:
     try:
         wfa_result = run_walk_forward(wfa_config, progress_callback=_wfa_progress)
         st.session_state.wfa_result = wfa_result
-        _wfa_progress_bar.progress(100, text="✅ WFA 完成！")
-        st.toast(f"✅ WFA完成！{wfa_result.n_windows} 個窗口, 效率={wfa_result.wf_efficiency:.2%}")
+        _wfa_progress_bar.progress(100, text="WFA Done!")
+        st.toast(f"WFA完成! {wfa_result.n_windows} 個窗口, 效率={wfa_result.wf_efficiency:.2%}")
     except Exception as e:
         _wfa_progress_bar.empty()
         st.error(f"WFA 失敗: {e}")
@@ -698,7 +700,7 @@ if run_wfa:
 # ---------------------------------------------------------------------------
 st.title("ancserFX Dashboard")
 
-tabs = st.tabs(["📈 回測 Backtest", "🎲 蒙特卡洛 MC", "🔍 優化 Optimize", "🔄 前推 WFA", "📋 交易記錄 Trades", "🕯 K線圖 Chart"])
+tabs = st.tabs(["Backtest", "Monte Carlo", "Optimize", "WFA", "Trades", "Chart"])
 
 # ============================================================
 # TAB 1: BACKTEST
@@ -706,7 +708,7 @@ tabs = st.tabs(["📈 回測 Backtest", "🎲 蒙特卡洛 MC", "🔍 優化 Opt
 with tabs[0]:
     rd = st.session_state.bt_result_dict
     if rd is None:
-        st.info("點擊左側 **▶ 回測 Backtest** 開始。")
+        st.info("點擊左側 Backtest 開始。")
     else:
         m = rd["metrics"]
 
@@ -739,15 +741,15 @@ with tabs[0]:
         consistency_ok = best_day <= best_day_limit if m.get("net_profit", 0) > 0 else True
 
         cols3 = st.columns(6)
-        cols3[0].metric("🎯 通過目標 Target", f"${profit_target:,.0f}",
-                       delta=f"{'✅ 已通過' if passed else '❌ 未達標'}")
-        cols3[1].metric("⏱ 通過天數 Days", f"{days_to_pass or '—'}",
+        cols3[0].metric("通過目標 Target", f"${profit_target:,.0f}",
+                       delta=f"{'PASS' if passed else 'FAIL'}")
+        cols3[1].metric("通過天數 Days", f"{days_to_pass or '—'}",
                        delta=f"{str(m.get('pass_timestamp') or '')[:10] if passed else ''}")
         cols3[2].metric("最佳單日 Best Day", f"${best_day:,.2f}",
-                       delta=f"{'✅' if consistency_ok else '❌'} 限制${best_day_limit:,.0f}")
+                       delta=f"{'OK' if consistency_ok else 'OVER'} 限制${best_day_limit:,.0f}")
         cols3[3].metric("最差單日 Worst Day", f"${m.get('worst_day_pnl', 0):,.2f}")
         cols3[4].metric("Best Day占比", f"{best_day_pct:.1f}%",
-                       delta="需<50%" if best_day_pct > 50 else "✅ OK")
+                       delta="需<50%" if best_day_pct > 50 else "OK")
         cols3[5].metric("交易天數 Trading Days", f"{m.get('trading_days', 0)}")
 
         # Row 4: Circuit Breaker & Best Day enforcement
@@ -755,25 +757,25 @@ with tabs[0]:
         bd_pauses = m.get("best_day_pauses", [])
         if cb_blocks > 0 or len(bd_pauses) > 0:
             cols4 = st.columns(3)
-            cols4[0].metric("🔌 斷路器攔截 CB Blocks", f"{cb_blocks}",
-                           delta="⚠ 預算不足" if cb_blocks > 0 else "")
-            cols4[1].metric("⏸ Best Day暫停", f"{len(bd_pauses)} 天",
+            cols4[0].metric("斷路器攔截 CB Blocks", f"{cb_blocks}",
+                           delta="預算不足" if cb_blocks > 0 else "")
+            cols4[1].metric("Best Day暫停", f"{len(bd_pauses)} 天",
                            delta=", ".join(bd_pauses[:3]) if bd_pauses else "")
-            cols4[2].metric("📊 有效交易日", f"{m.get('trading_days', 0) - len(bd_pauses)}")
+            cols4[2].metric("有效交易日", f"{m.get('trading_days', 0) - len(bd_pauses)}")
 
         # Row 5: Payout Readiness
         consec_150 = m.get("max_consec_150_days", 0)
         std_ready = m.get("payout_standard_ready", False)
         xfa_ready = m.get("payout_xfa_ready", False)
         cols5 = st.columns(4)
-        cols5[0].metric("💵 連續$150+天 Consec Days", f"{consec_150}",
-                       delta=f"{'✅ ≥5' if std_ready else f'需{5 - consec_150}天'}")
-        cols5[1].metric("📋 標準付款 Standard", "✅ 就緒" if std_ready else "❌ 未達標",
+        cols5[0].metric("連續$150+天 Consec Days", f"{consec_150}",
+                       delta=f"{'>=5' if std_ready else f'需{5 - consec_150}天'}")
+        cols5[1].metric("標準付款 Standard", "Ready" if std_ready else "Not Ready",
                        delta="5天連續$150+" if std_ready else "")
-        cols5[2].metric("⚡ XFA快速付款", "✅ 就緒" if xfa_ready else "❌ 未達標",
+        cols5[2].metric("XFA快速付款", "Ready" if xfa_ready else "Not Ready",
                        delta="3天+40%一致性" if xfa_ready else "")
-        cols5[3].metric("📊 Best Day佔比", f"{best_day_pct:.1f}%",
-                       delta="需≤50% (XFA≤60%)" if best_day_pct > 50 else "✅ OK")
+        cols5[3].metric("Best Day佔比", f"{best_day_pct:.1f}%",
+                       delta="需<=50% (XFA<=60%)" if best_day_pct > 50 else "OK")
 
         # Equity curve
         eq = rd.get("equity_curve", [])
@@ -812,7 +814,7 @@ with tabs[0]:
             if acct_rules and acct_rules.profit_target > 0:
                 target_equity = acct_rules.account_size + acct_rules.profit_target
                 fig.add_hline(y=target_equity, line_dash="dash", line_color="#00c853",
-                             annotation_text=f"🎯 通過目標 ${target_equity:,.0f}", row=1, col=1)
+                             annotation_text=f"Target ${target_equity:,.0f}", row=1, col=1)
 
             # Mark pass point with a star
             pass_idx = m.get("pass_bar_index")
@@ -823,7 +825,7 @@ with tabs[0]:
                     y=[pass_row["equity"]],
                     mode="markers+text",
                     marker=dict(symbol="star", size=16, color="#FFD700"),
-                    text=["✅ PASSED"],
+                    text=["PASSED"],
                     textposition="top center",
                     textfont=dict(color="#FFD700", size=12),
                     showlegend=False,
@@ -842,7 +844,7 @@ with tabs[0]:
                 )
                 fig.add_annotation(
                     x=one_month_str, y=1, yref="y domain",
-                    text="📅 30天評估期", showarrow=False, yanchor="bottom",
+                    text="30d Eval", showarrow=False, yanchor="bottom",
                     font=dict(color="#9C27B0", size=10), row=1, col=1,
                 )
 
@@ -858,7 +860,7 @@ with tabs[0]:
                 )
                 fig.add_annotation(
                     x=bd_str, y=0, yref="y domain",
-                    text="⏸ Best Day", showarrow=False, yanchor="top",
+                    text="BD Pause", showarrow=False, yanchor="top",
                     font=dict(color="#FF9800", size=10), row=1, col=1,
                 )
 
@@ -866,7 +868,7 @@ with tabs[0]:
             cb_blocks = m.get("circuit_breaker_blocks", 0)
             if cb_blocks > 0:
                 fig.add_annotation(
-                    text=f"🔌 斷路器攔截 {cb_blocks} 次",
+                    text=f"CB Blocks: {cb_blocks}",
                     xref="paper", yref="paper", x=0.01, y=0.98,
                     showarrow=False, font=dict(color="#ff9800", size=11),
                     bgcolor="rgba(0,0,0,0.6)",
@@ -891,7 +893,7 @@ with tabs[0]:
             st.plotly_chart(fig_pnl, use_container_width=True)
 
         if rd.get("violations"):
-            with st.expander(f"⚠️ 風控違規 Risk Violations ({len(rd['violations'])})"):
+            with st.expander(f"Risk Violations ({len(rd['violations'])})"):
                 for v in rd["violations"][:50]:
                     st.text(v)
 
@@ -910,7 +912,7 @@ with tabs[0]:
 with tabs[1]:
     mc = st.session_state.mc_result
     if mc is None:
-        st.info("點擊左側 **🎲 蒙特卡洛 MC** 運行模擬。")
+        st.info("點擊左側 Monte Carlo 運行模擬。")
     else:
         fe = mc.final_equity_stats
         dd = mc.max_drawdown_stats
@@ -918,13 +920,13 @@ with tabs[1]:
 
         cols = st.columns(6)
         ruin_color = "normal" if mc.ruin_probability < 0.05 else "inverse"
-        cols[0].metric("💀 爆倉概率 Ruin", f"{mc.ruin_probability:.1%}", delta_color=ruin_color)
+        cols[0].metric("爆倉概率 Ruin", f"{mc.ruin_probability:.1%}", delta_color=ruin_color)
         cols[1].metric("中位終值 Median", f"${fe['p50']:,.0f}")
         cols[2].metric("95%最大回撤 DD", f"${dd['p95']:,.0f}")
         cols[3].metric("95%連虧 ConsecL", f"{cl['p95']:.0f}")
         pass_color = "normal" if mc.pass_probability > 0.5 else "inverse"
-        cols[4].metric("✅ 通過概率 Pass", f"{mc.pass_probability:.1%}", delta_color=pass_color)
-        cols[5].metric("📅 30天通過 30d", f"{mc.pass_30d_probability:.1%}",
+        cols[4].metric("通過概率 Pass", f"{mc.pass_probability:.1%}", delta_color=pass_color)
+        cols[5].metric("30天通過 30d", f"{mc.pass_30d_probability:.1%}",
                        delta_color="normal" if mc.pass_30d_probability > 0.3 else "inverse")
 
         cols2 = st.columns(4)
@@ -986,7 +988,7 @@ with tabs[1]:
 with tabs[2]:
     opt = st.session_state.opt_result
     if opt is None:
-        st.info("點擊左側 **🔍 優化 Optimize** 搜索最佳參數。")
+        st.info("點擊左側 Optimize 搜索最佳參數。")
     else:
         # Filter by min trades
         filtered_results = [
@@ -999,7 +1001,7 @@ with tabs[2]:
         else:
             best = filtered_results[0]
 
-            st.subheader("🏆 最優參數 Best Parameters")
+            st.subheader("Best Parameters")
             st.caption(f"(已過濾: 僅顯示 ≥{opt_min_trades} 筆交易的結果，共 {len(filtered_results)}/{len(opt.all_results)} 組)")
 
             cols_best = st.columns(min(len(best["params"]), 6) or 1)
@@ -1019,7 +1021,7 @@ with tabs[2]:
             st.markdown("---")
 
             # Top-10 table (filtered)
-            st.subheader(f"📊 Top 10 (按 {opt.target_metric}, ≥{opt_min_trades} 筆交易)")
+            st.subheader(f"Top 10 ({opt.target_metric}, >={opt_min_trades} trades)")
             top_rows = []
             for i, r in enumerate(filtered_results[:10]):
                 row = {"Rank": i + 1}
@@ -1036,7 +1038,7 @@ with tabs[2]:
 
             # Parameter sensitivity
             if not opt.param_metric_df.empty and opt.param_names:
-                st.subheader("📈 參數敏感度 Parameter Sensitivity")
+                st.subheader("Parameter Sensitivity")
                 n_params = len(opt.param_names)
                 n_cols = min(n_params, 3)
                 scatter_cols = st.columns(n_cols)
@@ -1070,17 +1072,17 @@ with tabs[2]:
 with tabs[3]:
     wfa = st.session_state.wfa_result
     if wfa is None:
-        st.info("點擊左側 **🔄 前推 WFA** 運行前推分析。")
+        st.info("點擊左側 WFA 運行前推分析。")
     else:
         sm = wfa.stitched_metrics
 
         # Row 1: Headline metrics
         wfa_cols = st.columns(6)
         eff_color = "normal" if wfa.wf_efficiency >= 0.5 else "inverse"
-        wfa_cols[0].metric("📊 WF效率 Efficiency", f"{wfa.wf_efficiency:.2%}",
-                           delta="≥50%佳" if wfa.wf_efficiency >= 0.5 else "⚠ <50%",
+        wfa_cols[0].metric("WF Efficiency", f"{wfa.wf_efficiency:.2%}",
+                           delta=">=50% good" if wfa.wf_efficiency >= 0.5 else "<50%",
                            delta_color=eff_color)
-        wfa_cols[1].metric("💰 拼接淨利 Stitched P&L", f"${sm.get('net_profit', 0):,.2f}")
+        wfa_cols[1].metric("Stitched P&L", f"${sm.get('net_profit', 0):,.2f}")
         wfa_cols[2].metric("夏普 Sharpe", f"{sm.get('sharpe_ratio', 0):.3f}")
         wfa_cols[3].metric("窗口一致 Consistency", f"{wfa.window_consistency:.0%}",
                            delta=f"{wfa.n_profitable_windows}/{wfa.n_windows} 盈利")
@@ -1093,7 +1095,7 @@ with tabs[3]:
         wfa_cols2[2].metric("最大回撤 Max DD", f"${sm.get('max_drawdown', 0):,.2f}")
         wfa_cols2[3].metric("平均交易 Avg Trade", f"${sm.get('avg_trade', 0):,.2f}")
         wfa_cols2[4].metric("期望值 Expectancy", f"${sm.get('expectancy', 0):,.2f}")
-        wfa_cols2[5].metric("⏱ 耗時 Elapsed", f"{wfa.total_elapsed_sec:.0f}s")
+        wfa_cols2[5].metric("Elapsed", f"{wfa.total_elapsed_sec:.0f}s")
 
         # Stitched equity curve with window boundaries
         if wfa.stitched_equity_curve:
@@ -1149,7 +1151,7 @@ with tabs[3]:
             st.plotly_chart(fig_wfa_eq, use_container_width=True)
 
         # Per-window summary table
-        st.subheader("📋 窗口明細 Window Details")
+        st.subheader("Window Details")
         wfa_rows = []
         for w in wfa.windows:
             test_pnl = w.test_metrics.get("net_profit", 0)
@@ -1168,7 +1170,7 @@ with tabs[3]:
             st.dataframe(pd.DataFrame(wfa_rows), use_container_width=True, hide_index=True)
 
         # Train vs Test bar chart
-        st.subheader("📊 訓練 vs 測試 Train vs Test")
+        st.subheader("Train vs Test")
         _wfa_labels = [f"W{w.window_index + 1}" for w in wfa.windows]
         _wfa_train_vals = [w.train_target_value for w in wfa.windows]
         _wfa_test_vals = [w.test_metrics.get(wfa.config.opt_target_metric, 0) or 0 for w in wfa.windows]
@@ -1185,7 +1187,7 @@ with tabs[3]:
 
         # Parameter stability
         if wfa.param_stability:
-            st.subheader("🔧 參數穩定性 Parameter Stability")
+            st.subheader("Parameter Stability")
             n_p = len(wfa.param_stability)
             ps_cols = st.columns(min(n_p, 3))
             for idx, (pname, pstat) in enumerate(wfa.param_stability.items()):
@@ -1283,13 +1285,13 @@ with tabs[5]:
             if trades:
                 trade_labels = [
                     f"#{i+1} {t['direction']} {t['entry_time'][:16]} → {t['exit_time'][:16]} "
-                    f"({'✅' if t['pnl'] > 0 else '❌'} ${t['pnl']:,.2f})"
+                    f"({'W' if t['pnl'] > 0 else 'L'} ${t['pnl']:,.2f})"
                     for i, t in enumerate(trades)
                 ]
                 col_nav1, col_nav2 = st.columns([3, 1])
                 with col_nav1:
                     selected_trade_idx = st.selectbox(
-                        "🔍 跳轉交易 Jump to Trade", range(len(trade_labels)),
+                        "Jump to Trade", range(len(trade_labels)),
                         format_func=lambda i: trade_labels[i],
                     )
                 with col_nav2:
@@ -1428,7 +1430,7 @@ with tabs[5]:
                         mid_price = (t["entry_price"] + t["exit_price"]) / 2
                         fig.add_annotation(
                             x=mid_ts, y=mid_price,
-                            text=f"{'✅' if is_win else '❌'} ${t['pnl']:,.2f}",
+                            text=f"{'W' if is_win else 'L'} ${t['pnl']:,.2f}",
                             showarrow=True, arrowhead=2,
                             font=dict(color=trade_color, size=12),
                             bgcolor="rgba(0,0,0,0.7)",
@@ -1443,7 +1445,7 @@ with tabs[5]:
                     margin=dict(l=60, r=20, t=40, b=30),
                     xaxis_rangeslider_visible=False,
                     xaxis2_rangeslider_visible=False,
-                    title=f"🕯 {cfg['instrument']} {cfg.get('timeframe', '5min')} K線圖",
+                    title=f"{cfg['instrument']} {cfg.get('timeframe', '5min')}",
                     yaxis_title="價格 Price",
                     yaxis2_title="成交量 Vol",
                     hovermode="x unified",

@@ -273,14 +273,15 @@ def download_dataset(key: str, output_dir: Path, credentials: tuple[str, str] | 
 
     # --- Fallback: Manual instructions ---
     print(f"\n[warning] Automatic download failed for [{key}].")
-    print("  Download manually:")
-    print(f"  1. Visit: {info['manual_url']}")
-    print("  2. Click 'Download' (needs Kaggle account).")
-    print(f"  3. Extract the ZIP into: {dest_dir}")
+    print("  No Kaggle API key? No problem. Download manually (free Kaggle account only):")
+    print(f"  1. Open: {info['manual_url']}")
+    print(f"  2. Click 'Download' button on the page")
+    print(f"  3. Unzip into: {dest_dir}")
+    print(f"  4. Then run: python -m scripts.convert_to_parquet --instrument {key.split('-')[0]}")
     print()
 
 
-def list_datasets() -> None:
+def list_datasets(show_urls: bool = False) -> None:
     """Print all available datasets grouped by category."""
     print("\n  Available Datasets")
     print("  " + "=" * 56)
@@ -298,11 +299,19 @@ def list_datasets() -> None:
         print("  " + "-" * 56)
         for key, info in items:
             print(f"    {key:<18} {info['description']}")
+            if show_urls:
+                print(f"    {'':18} {info['manual_url']}")
 
     print(f"\n  Batch groups:")
     print(f"    {'all-futures':<18} All futures datasets ({len(DATASET_GROUPS['all-futures'])})")
     print(f"    {'all-lob':<18} All LOB datasets ({len(DATASET_GROUPS['all-lob'])})")
     print(f"    {'all':<18} Everything ({len(DATASET_GROUPS['all'])})")
+
+    if not show_urls:
+        print(f"\n  No API key? Use --manual to show direct download links.")
+
+    print(f"\n  After download, convert with:")
+    print(f"    python -m scripts.convert_to_parquet --instrument <name>")
     print()
 
 
@@ -332,6 +341,10 @@ def main() -> None:
         help=f"Dataset key or group to download. Use --list to see options.",
     )
     parser.add_argument(
+        "--manual", action="store_true",
+        help="Show direct download links (no API key needed).",
+    )
+    parser.add_argument(
         "--output-dir",
         type=str,
         default="data/raw",
@@ -340,8 +353,8 @@ def main() -> None:
 
     args = parser.parse_args()
 
-    if args.list:
-        list_datasets()
+    if args.list or args.manual:
+        list_datasets(show_urls=args.manual)
         return
 
     if args.dataset is None:
@@ -368,8 +381,11 @@ def main() -> None:
     if creds:
         print(f"[auth] Kaggle credentials loaded for: {creds[0]}")
     else:
-        print("[auth] No Kaggle credentials found. Will try unauthenticated download.")
-        print("[hint] Set KAGGLE_USERNAME and KAGGLE_KEY in .env")
+        print("[auth] No Kaggle API key found.")
+        print("[hint] Option 1: Set KAGGLE_USERNAME + KAGGLE_KEY in .env")
+        print("[hint] Option 2: Use --manual to get direct download links (browser only)")
+        print("[hint] Option 3: Download from browser, put CSV in data/raw/<instrument>/")
+        print()
 
     print(f"Downloading {len(keys)} dataset(s) to {output_dir}\n")
 

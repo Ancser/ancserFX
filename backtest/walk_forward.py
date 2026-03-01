@@ -280,7 +280,7 @@ def run_walk_forward(
     t0 = time.perf_counter()
     base = config.base_config
 
-    # --- 1. Resolve data date range ---
+    # --- 1. Resolve data date range & pre-load full dataset ---
     store = DataStore()
     data_start, data_end, bar_count = store.get_date_range(
         base.instrument, base.timeframe
@@ -289,6 +289,14 @@ def run_walk_forward(
         "WFA: data range %s to %s (%d bars), instrument=%s, timeframe=%s",
         data_start, data_end, bar_count, base.instrument, base.timeframe,
     )
+
+    # Pre-load all bars once to avoid repeated parquet I/O (major speedup)
+    full_df = store.load_bars(base.instrument, base.timeframe)
+    if full_df.empty:
+        raise ValueError(f"No data for {base.instrument}/{base.timeframe}")
+    if "timestamp" in full_df.columns:
+        full_df["timestamp"] = pd.to_datetime(full_df["timestamp"])
+    logger.info("WFA: pre-loaded %d bars into memory", len(full_df))
 
     # --- 2. Generate windows ---
     windows_spec = _generate_windows(config, data_start, data_end)
@@ -355,6 +363,7 @@ def run_walk_forward(
                 target_metric=config.opt_target_metric,
                 seed=seed,
                 max_workers=None,
+                preloaded_df=full_df,
             )
         except Exception as e:
             logger.error("WFA window %d: optimization failed: %s", i + 1, e)
@@ -413,7 +422,7 @@ def run_walk_forward(
         test_t0 = time.perf_counter()
         try:
             engine = BacktestEngine()
-            test_result = engine.run(test_config)
+            test_result = engine.run(test_config, preloaded_df=full_df)
         except Exception as e:
             logger.error("WFA window %d: test backtest failed: %s", i + 1, e)
             continue
