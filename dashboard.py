@@ -141,110 +141,101 @@ if "active_params" not in st.session_state:
 # Data availability calendar (GitHub-style heatmap)
 # ---------------------------------------------------------------------------
 @st.cache_data(ttl=60, show_spinner=False)
-def _build_data_calendar() -> pd.DataFrame:
-    """Scan all parquet files and build a month-level availability matrix.
+def _build_data_summary() -> list[dict]:
+    """Scan all parquet files and return a summary list.
 
-    Returns a DataFrame: rows = 'INSTRUMENT/timeframe', columns = 'YYYY-MM',
-    values = bar count (0 if no data).
+    Each entry: {instrument, timeframe, start, end, rows, size_mb, data_type, warnings}
     """
     from data.store import DataStore
     store = DataStore()
-    records: list[dict] = []
+    results: list[dict] = []
     for inst in store.list_instruments():
         for tf in store.list_timeframes(inst):
             try:
+                pf = store._parquet_path(inst, tf)
+                if not pf.exists():
+                    continue
+                size_mb = pf.stat().st_size / 1024 / 1024
                 df = store.load_bars(inst, tf)
                 if df.empty:
                     continue
-                monthly = df.groupby(df["timestamp"].dt.to_period("M")).size()
-                for period, count in monthly.items():
-                    records.append({
-                        "instrument": inst,
-                        "timeframe": tf,
-                        "label": f"{inst}/{tf}",
-                        "month": str(period),
-                        "bars": int(count),
-                    })
+                ts = pd.to_datetime(df["timestamp"])
+
+                # Detect data type from columns
+                cols = set(df.columns)
+                has_orderflow = bool(cols & {"delta", "bid_volume", "ask_volume", "cum_delta"})
+                data_type = "Orderflow" if has_orderflow else "OHLCV"
+
+                # Detect warnings
+                warnings = []
+                zero_vol = (df["volume"] == 0).sum() if "volume" in cols else 0
+                if zero_vol > len(df) * 0.1:
+                    warnings.append(f"volume=0: {zero_vol / len(df):.0%}")
+                if all(c in cols for c in ("open", "high", "low", "close")):
+                    same_ohlc = ((df["open"] == df["close"]) & (df["high"] == df["low"]) & (df["open"] == df["high"])).sum()
+                    if same_ohlc > len(df) * 0.1:
+                        warnings.append(f"O=H=L=C: {same_ohlc / len(df):.0%}")
+                # Detect mislabeled tick (actually daily)
+                if tf == "tick" and len(df) < 1000:
+                    diffs = ts.diff().dropna().dt.total_seconds().median()
+                    if diffs > 3600:
+                        warnings.append("mislabeled (daily)")
+
+                results.append({
+                    "instrument": inst,
+                    "timeframe": tf,
+                    "start": str(ts.min().date()),
+                    "end": str(ts.max().date()),
+                    "rows": len(df),
+                    "size_mb": round(size_mb, 1),
+                    "data_type": data_type,
+                    "warnings": warnings,
+                })
             except Exception:
                 continue
-    if not records:
-        return pd.DataFrame()
-    return pd.DataFrame(records)
+    return results
 
 
-def _render_data_calendar(cal_df: pd.DataFrame, selected_tf: str | None = None):
-    """Render a compact data availability heatmap in the sidebar."""
-    if cal_df.empty or "timeframe" not in cal_df.columns:
-        st.caption("無數據 - 請先下載: python -m scripts.download_kaggle --list")
+def _render_data_coverage(summary: list[dict], selected_inst: str, selected_tf: str):
+    """Render data coverage listing in the sidebar."""
+    if not summary:
+        st.caption("No data -- run download_data.bat first")
         return
 
-    # Filter by selected timeframe if given
-    if selected_tf:
-        filtered = cal_df[cal_df["timeframe"] == selected_tf]
+    # Current selection status
+    match = [s for s in summary if s["instrument"] == selected_inst and s["timeframe"] == selected_tf]
+    if match:
+        m = match[0]
+        warn_str = ""
+        if m["warnings"]:
+            warn_str = "  [!] " + ", ".join(m["warnings"])
+        st.caption(
+            f"{m['instrument']}/{m['timeframe']}  [{m['data_type']}]\n"
+            f"{m['start']} ~ {m['end']}  |  "
+            f"{m['rows']:,} bars  |  {m['size_mb']} MB"
+            f"{warn_str}"
+        )
     else:
-        filtered = cal_df
+        st.caption(f"{selected_inst}/{selected_tf}: No data")
 
-    if filtered.empty:
-        st.caption(f"{selected_tf} 無可用數據")
-        return
-
-    # Pivot: rows = instrument, columns = month
-    pivot = filtered.groupby(["instrument", "month"])["bars"].sum().reset_index()
-    pivot_table = pivot.pivot(index="instrument", columns="month", values="bars").fillna(0)
-    pivot_table = pivot_table.reindex(sorted(pivot_table.columns), axis=1)
-
-    # Build Plotly heatmap
-    instruments = list(pivot_table.index)
-    months = list(pivot_table.columns)
-    z = pivot_table.values
-
-    # Custom colorscale: 0 = dark gray, >0 = shades of green
-    colorscale = [[0, "#2a2a2a"], [0.001, "#2a2a2a"], [0.002, "#1b5e20"], [0.3, "#388e3c"], [0.6, "#4caf50"], [1.0, "#81c784"]]
-
-    # Short month labels (show year only at Jan or first)
-    short_labels = []
-    for m in months:
-        parts = m.split("-")
-        if len(parts) == 2:
-            if parts[1] == "01" or m == months[0]:
-                short_labels.append(f"{parts[0]}\n{parts[1]}")
-            else:
-                short_labels.append(parts[1])
-        else:
-            short_labels.append(m)
-
-    fig = go.Figure(data=go.Heatmap(
-        z=z,
-        x=short_labels,
-        y=instruments,
-        colorscale=colorscale,
-        showscale=False,
-        hovertemplate="<b>%{y}</b><br>%{x}: %{z:,} bars<extra></extra>",
-        xgap=1, ygap=1,
-    ))
-    fig.update_layout(
-        template="plotly_dark",
-        height=max(60, 30 * len(instruments) + 40),
-        margin=dict(l=50, r=5, t=5, b=30),
-        xaxis=dict(tickfont=dict(size=8), dtick=1),
-        yaxis=dict(tickfont=dict(size=10), autorange="reversed"),
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    # Full listing
+    for s in sorted(summary, key=lambda x: (x["instrument"], x["timeframe"])):
+        is_current = s["instrument"] == selected_inst and s["timeframe"] == selected_tf
+        marker = ">> " if is_current else "   "
+        warn = " [!]" if s["warnings"] else ""
+        st.text(
+            f"{marker}{s['instrument']}/{s['timeframe']:<6}  "
+            f"{s['start']} ~ {s['end']}  "
+            f"{s['rows']:>9,}  {s['data_type']}{warn}"
+        )
 
 
-def _get_data_date_range(cal_df: pd.DataFrame, instrument: str, timeframe: str) -> tuple[str, str]:
-    """Return (first_month, last_month) for a specific instrument+timeframe."""
-    if cal_df.empty or "instrument" not in cal_df.columns:
+def _get_data_date_range(summary: list[dict], instrument: str, timeframe: str) -> tuple[str, str]:
+    """Return (start_date, end_date) for a specific instrument+timeframe."""
+    match = [s for s in summary if s["instrument"] == instrument and s["timeframe"] == timeframe]
+    if not match:
         return "", ""
-    sub = cal_df[(cal_df["instrument"] == instrument) & (cal_df["timeframe"] == timeframe)]
-    if sub.empty:
-        return "", ""
-    months = sorted(sub["month"].unique())
-    # Convert period to start/end dates
-    first = months[0] + "-01"
-    last_period = pd.Period(months[-1], freq="M")
-    last = str(last_period.end_time.date())
-    return first, last
+    return match[0]["start"], match[0]["end"]
 
 
 # ---------------------------------------------------------------------------
@@ -352,20 +343,18 @@ available_tfs = _get_available_timeframes(instrument)
 tf_default_idx = available_tfs.index("5min") if "5min" in available_tfs else 0
 timeframe = st.sidebar.selectbox("週期 Timeframe", available_tfs, index=tf_default_idx)
 
-# Data availability calendar
-_cal_df = _build_data_calendar()
-with st.sidebar.expander("Data Calendar", expanded=False):
-    _render_data_calendar(_cal_df, selected_tf=timeframe)
-    _auto_start, _auto_end = _get_data_date_range(_cal_df, instrument, timeframe)
-    if _auto_start:
-        st.caption(f"可用範圍: {_auto_start} ~ {_auto_end}")
+# Data coverage listing
+_data_summary = _build_data_summary()
+with st.sidebar.expander("Data Coverage", expanded=False):
+    _render_data_coverage(_data_summary, instrument, timeframe)
+_auto_start, _auto_end = _get_data_date_range(_data_summary, instrument, timeframe)
 
-# Date range (auto-fill from calendar if available)
+# Date range (auto-fill from data coverage)
 col_d1, col_d2 = st.sidebar.columns(2)
 _default_start = _auto_start if _auto_start else "2024-01-01"
 _default_end = _auto_end if _auto_end else "2024-06-30"
-start_date = col_d1.text_input("開始 Start", value="2024-01-01")
-end_date = col_d2.text_input("結束 End", value="2024-06-30")
+start_date = col_d1.text_input("開始 Start", value=_default_start)
+end_date = col_d2.text_input("結束 End", value=_default_end)
 
 # Slippage & Commission
 col_s1, col_s2 = st.sidebar.columns(2)

@@ -72,17 +72,35 @@ download_data.bat
 bash download_data.sh
 ```
 
-解壓後 `data/parquet/` 結構：
+### Data Coverage
 
-```
-data/parquet/
-  es/5min/data.parquet
-  es/daily/data.parquet
-  es/tick/data.parquet
-  mes/5min/data.parquet
-  mnq/5min/data.parquet
-  nq/5min/data.parquet
-```
+解壓後所有數據集的覆蓋範圍和類型：
+
+| 合約 | 週期 | 類型 | 範圍 | Bars | 備註 |
+|------|------|------|------|------|------|
+| ES | 5min | OHLCV | 2019-08 ~ 2024-08 | 353,206 | 主要數據集 |
+| ES | daily | OHLCV | 1999-09 ~ 2022-12 | 5,928 | 16% rows O=H=L=C，質量一般 |
+| ES | tick | OHLCV | 2020-09 ~ 2021-12 | 317 | 實為 daily，標記錯誤，不可用 |
+| MES | 5min | OHLCV | 2019-08 ~ 2024-08 | 353,206 | 與 ES 相同數據 (Kaggle 無獨立 MES) |
+| NQ | 5min | OHLCV | 2019-08 ~ 2024-08 | 329,458 | 主要數據集 |
+| MNQ | 5min | OHLCV | 2019-08 ~ 2024-08 | 329,458 | 與 NQ 相同數據 (Kaggle 無獨立 MNQ) |
+
+> 目前無 Orderflow (delta / bid-ask volume) 數據。
+> Delta Momentum 策略使用 OHLCV 近似法計算 delta，不需要真正的訂單流數據。
+
+### 選擇合約/週期/策略時的實際行為
+
+| 選擇 | 結果 | 說明 |
+|------|------|------|
+| ES + 5min | 正常 | 353K bars, 2019-2024 |
+| ES + daily | 可用但質量一般 | 1999-2022，部分 bar 數據異常 |
+| ES + tick | 不可用 | 假數據，僅 317 個 daily bar 被錯標為 tick |
+| ES + 1min / 15min / 1h | 無數據 | 只有 5min / daily / tick 可用 |
+| MES + 5min | 正常 | 價格與 ES 相同，PnL 按 MES tick value ($1.25) 計算 |
+| NQ + 5min | 正常 | 329K bars, 2019-2024 |
+| MNQ + 5min | 正常 | 價格與 NQ 相同，PnL 按 MNQ tick value ($0.50) 計算 |
+| Delta Momentum + OHLCV | 正常 | 用 (close-open)/volume 近似 delta，不需要訂單流數據 |
+| 任何策略 + 不存在的週期 | 報錯 | Dashboard 已限制只顯示有數據的週期 |
 
 ---
 
