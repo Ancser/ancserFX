@@ -349,12 +349,39 @@ with st.sidebar.expander("Data Coverage", expanded=False):
     _render_data_coverage(_data_summary, instrument, timeframe)
 _auto_start, _auto_end = _get_data_date_range(_data_summary, instrument, timeframe)
 
-# Date range (auto-fill from data coverage)
-col_d1, col_d2 = st.sidebar.columns(2)
+# Date range with quick presets
 _default_start = _auto_start if _auto_start else "2024-01-01"
 _default_end = _auto_end if _auto_end else "2024-06-30"
-start_date = col_d1.text_input("開始 Start", value=_default_start)
-end_date = col_d2.text_input("結束 End", value=_default_end)
+
+# Build year range from data
+_data_start_year = int(_default_start[:4]) if _default_start else 2020
+_data_end_year = int(_default_end[:4]) if _default_end else 2024
+
+_date_presets: dict[str, tuple[str, str]] = {"Full Range": (_default_start, _default_end)}
+for _yr in range(_data_end_year, _data_start_year - 1, -1):
+    _yr_start = f"{_yr}-01-01"
+    _yr_end = f"{_yr}-12-31"
+    # Clip to actual data range
+    _yr_start = max(_yr_start, _default_start) if _default_start else _yr_start
+    _yr_end = min(_yr_end, _default_end) if _default_end else _yr_end
+    if _yr_start <= _yr_end:
+        _date_presets[str(_yr)] = (_yr_start, _yr_end)
+# Add multi-year combos
+if _data_end_year - _data_start_year >= 2:
+    _date_presets[f"{_data_end_year-1}-{_data_end_year}"] = (
+        f"{_data_end_year-1}-01-01", _default_end,
+    )
+    _date_presets[f"{_data_end_year-2}-{_data_end_year}"] = (
+        f"{_data_end_year-2}-01-01", _default_end,
+    )
+
+_preset_names = list(_date_presets.keys())
+_date_preset = st.sidebar.selectbox("日期範圍 Date Range", _preset_names, index=0)
+_preset_start, _preset_end = _date_presets[_date_preset]
+
+col_d1, col_d2 = st.sidebar.columns(2)
+start_date = col_d1.text_input("開始 Start", value=_preset_start)
+end_date = col_d2.text_input("結束 End", value=_preset_end)
 
 # Slippage & Commission
 col_s1, col_s2 = st.sidebar.columns(2)
@@ -1405,8 +1432,7 @@ with tabs[5]:
                         hoverinfo="skip",
                     ), row=1, col=1)
 
-                    # Stop loss line (if entry has SL info — approximate from trade data)
-                    # Highlight selected trade
+                    # Highlight selected trade with SL/TP lines
                     if selected_trade_idx is not None and i == selected_trade_idx:
                         # Add shaded background for selected trade
                         fig.add_vrect(
@@ -1426,6 +1452,52 @@ with tabs[5]:
                             bordercolor=trade_color,
                             row=1, col=1,
                         )
+
+                        # SL line
+                        sl_price = t.get("stop_loss_price")
+                        if sl_price is not None:
+                            fig.add_trace(go.Scatter(
+                                x=[entry_ts, exit_ts],
+                                y=[sl_price, sl_price],
+                                mode="lines",
+                                line=dict(color="#FF1744", width=1.5, dash="dash"),
+                                name=f"SL {sl_price:.2f}",
+                                hovertemplate=f"SL: {sl_price:.2f}<extra></extra>",
+                                showlegend=False,
+                            ), row=1, col=1)
+                            fig.add_annotation(
+                                x=entry_ts, y=sl_price,
+                                text=f"SL {sl_price:.2f}",
+                                showarrow=False, xanchor="left",
+                                font=dict(color="#FF1744", size=9),
+                                bgcolor="rgba(0,0,0,0.6)",
+                                row=1, col=1,
+                            )
+
+                        # TP lines
+                        tp_prices = t.get("take_profit_prices")
+                        if tp_prices:
+                            tp_colors = ["#00E676", "#00C853", "#1B5E20"]
+                            for tp_i, tp_price in enumerate(tp_prices):
+                                tp_color = tp_colors[tp_i % len(tp_colors)]
+                                tp_label = f"TP{tp_i+1}" if len(tp_prices) > 1 else "TP"
+                                fig.add_trace(go.Scatter(
+                                    x=[entry_ts, exit_ts],
+                                    y=[tp_price, tp_price],
+                                    mode="lines",
+                                    line=dict(color=tp_color, width=1.5, dash="dash"),
+                                    name=f"{tp_label} {tp_price:.2f}",
+                                    hovertemplate=f"{tp_label}: {tp_price:.2f}<extra></extra>",
+                                    showlegend=False,
+                                ), row=1, col=1)
+                                fig.add_annotation(
+                                    x=entry_ts, y=tp_price,
+                                    text=f"{tp_label} {tp_price:.2f}",
+                                    showarrow=False, xanchor="left",
+                                    font=dict(color=tp_color, size=9),
+                                    bgcolor="rgba(0,0,0,0.6)",
+                                    row=1, col=1,
+                                )
 
                 # Layout
                 fig.update_layout(
@@ -1453,12 +1525,24 @@ with tabs[5]:
                 # Trade summary for selected trade
                 if selected_trade_idx is not None and trades:
                     sel = trades[selected_trade_idx]
-                    cols_detail = st.columns(8)
-                    cols_detail[0].metric("方向", sel["direction"])
-                    cols_detail[1].metric("入場", f"{sel['entry_price']:.2f}")
-                    cols_detail[2].metric("出場", f"{sel['exit_price']:.2f}")
-                    cols_detail[3].metric("盈虧", f"${sel['pnl']:,.2f}")
-                    cols_detail[4].metric("數量", f"{sel['quantity']}")
-                    cols_detail[5].metric("持倉", f"{sel['bars_held']} bars")
-                    cols_detail[6].metric("手續費", f"${sel.get('commission', 0):,.2f}")
-                    cols_detail[7].metric("入場時間", str(sel["entry_time"])[:16])
+                    row1 = st.columns(8)
+                    row1[0].metric("方向", sel["direction"])
+                    row1[1].metric("入場", f"{sel['entry_price']:.2f}")
+                    row1[2].metric("出場", f"{sel['exit_price']:.2f}")
+                    row1[3].metric("盈虧", f"${sel['pnl']:,.2f}")
+                    row1[4].metric("數量", f"{sel['quantity']}")
+                    row1[5].metric("持倉", f"{sel['bars_held']} bars")
+                    row1[6].metric("手續費", f"${sel.get('commission', 0):,.2f}")
+                    row1[7].metric("入場時間", str(sel["entry_time"])[:16])
+
+                    # SL/TP details
+                    _sl = sel.get("stop_loss_price")
+                    _tps = sel.get("take_profit_prices")
+                    if _sl is not None or _tps:
+                        row2 = st.columns(8)
+                        if _sl is not None:
+                            row2[0].metric("SL", f"{_sl:.2f}")
+                        if _tps:
+                            for _tp_i, _tp_val in enumerate(_tps[:4]):
+                                _tp_label = f"TP{_tp_i+1}" if len(_tps) > 1 else "TP"
+                                row2[_tp_i + 1].metric(_tp_label, f"{_tp_val:.2f}")

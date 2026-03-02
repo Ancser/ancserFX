@@ -195,6 +195,8 @@ class Trade:
     pnl: float
     commission: float = 0.0
     bars_held: int = 0
+    stop_loss_price: float | None = None
+    take_profit_prices: list[float] | None = None
 
     def __post_init__(self) -> None:
         if self.direction not in (1, -1):

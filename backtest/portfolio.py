@@ -60,6 +60,10 @@ class Portfolio:
         self.entry_time: datetime | None = None
         self.entry_bar_index: int = 0
 
+        # SL/TP tracking for trade records
+        self._pending_sl: float | None = None
+        self._pending_tp_prices: list[float] | None = None
+
         # Current market price for unrealized PnL
         self._current_price: float = 0.0
 
@@ -145,6 +149,20 @@ class Portfolio:
         return None
 
     # ------------------------------------------------------------------
+    # SL/TP capture
+    # ------------------------------------------------------------------
+
+    def capture_sl_tp(self, order: "OrderEvent") -> None:
+        """Capture SL/TP prices from an order for later inclusion in Trade records."""
+        self._pending_sl = order.stop_loss
+        tp_list: list[float] = []
+        if order.take_profit_levels:
+            tp_list = [lvl[0] for lvl in order.take_profit_levels]
+        elif order.take_profit is not None:
+            tp_list = [order.take_profit]
+        self._pending_tp_prices = tp_list if tp_list else None
+
+    # ------------------------------------------------------------------
     # Fill processing
     # ------------------------------------------------------------------
 
@@ -194,6 +212,8 @@ class Portfolio:
                 pnl=net_pnl,
                 commission=total_commission,
                 bars_held=bar_index - self.entry_bar_index,
+                stop_loss_price=self._pending_sl,
+                take_profit_prices=list(self._pending_tp_prices) if self._pending_tp_prices else None,
             )
             self.trades.append(trade)
             self.cash += gross_pnl - total_commission
@@ -228,6 +248,8 @@ class Portfolio:
             self.entry_price = None
             self.entry_time = None
             self.entry_bar_index = 0
+            self._pending_sl = None
+            self._pending_tp_prices = None
 
     # ------------------------------------------------------------------
     # Market update

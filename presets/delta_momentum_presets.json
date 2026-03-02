@@ -9,5 +9,195 @@
       "trend_ema_period": 100
     },
     "source": "example"
+  },
+  {
+    "name": "Opt#1 (sharpe_ratio=0.2106, 112 trades)",
+    "params": {
+      "delta_ema_period": 35,
+      "imbalance_lookback": 8,
+      "imbalance_threshold": 0.6,
+      "exit_imbalance": -0.2,
+      "trend_ema_period": 49
+    },
+    "metrics_summary": {
+      "net_profit": 475.0,
+      "win_rate": 31.25,
+      "profit_factor": 1.0366724570546226,
+      "sharpe_ratio": 0.21060136684590736,
+      "max_drawdown": 259210.0,
+      "total_trades": 112
+    },
+    "source": "optimizer"
+  },
+  {
+    "name": "Opt#2 (sharpe_ratio=0.1909, 139 trades)",
+    "params": {
+      "delta_ema_period": 81,
+      "imbalance_lookback": 12,
+      "imbalance_threshold": 0.15,
+      "exit_imbalance": 0.0,
+      "trend_ema_period": 66
+    },
+    "metrics_summary": {
+      "net_profit": -372.5,
+      "win_rate": 26.618705035971225,
+      "profit_factor": 0.9701163257119936,
+      "sharpe_ratio": 0.19086536405117752,
+      "max_drawdown": 259210.0,
+      "total_trades": 139
+    },
+    "source": "optimizer"
+  },
+  {
+    "name": "Opt#3 (sharpe_ratio=0.1256, 40 trades)",
+    "params": {
+      "delta_ema_period": 14,
+      "imbalance_lookback": 24,
+      "imbalance_threshold": 0.45,
+      "exit_imbalance": -0.3,
+      "trend_ema_period": 181
+    },
+    "metrics_summary": {
+      "net_profit": -3155.0,
+      "win_rate": 30.0,
+      "profit_factor": 0.5194211728865195,
+      "sharpe_ratio": 0.12561826727182074,
+      "max_drawdown": 259210.0,
+      "total_trades": 40
+    },
+    "source": "optimizer"
+  },
+  {
+    "name": "Opt#4 (sharpe_ratio=0.1041, 226 trades)",
+    "params": {
+      "delta_ema_period": 31,
+      "imbalance_lookback": 26,
+      "imbalance_threshold": 0.45,
+      "exit_imbalance": 0.45,
+      "trend_ema_period": 32
+    },
+    "metrics_summary": {
+      "net_profit": -1930.0,
+      "win_rate": 26.10619469026549,
+      "profit_factor": 0.8621674700946259,
+      "sharpe_ratio": 0.10407425025442638,
+      "max_drawdown": 259210.0,
+      "total_trades": 226
+    },
+    "source": "optimizer"
+  },
+  {
+    "name": "Opt#5 (sharpe_ratio=0.0530, 45 trades)",
+    "params": {
+      "delta_ema_period": 68,
+      "imbalance_lookback": 22,
+      "imbalance_threshold": 0.75,
+      "exit_imbalance": -0.35,
+      "trend_ema_period": 81
+    },
+    "metrics_summary": {
+      "net_profit": 2202.5,
+      "win_rate": 33.33333333333333,
+      "profit_factor": 1.2411056376573617,
+      "sharpe_ratio": 0.05304498294379733,
+      "max_drawdown": 127090.0,
+      "total_trades": 45
+    },
+    "source": "optimizer"
+  },
+  {
+    "name": "Opt#6 (sharpe_ratio=0.0483, 15 trades)",
+    "params": {
+      "delta_ema_period": 73,
+      "imbalance_lookback": 40,
+      "imbalance_threshold": 0.15,
+      "exit_imbalance": -0.05,
+      "trend_ema_period": 100
+    },
+    "metrics_summary": {
+      "net_profit": 2087.5,
+      "win_rate": 46.666666666666664,
+      "profit_factor": 1.4057337220602526,
+      "sharpe_ratio": 0.048273438364319333,
+      "max_drawdown": 127090.0,
+      "total_trades": 15
+    },
+    "source": "optimizer"
+  },
+  {
+    "name": "Opt#7 (sharpe_ratio=0.0476, 23 trades)",
+    "params": {
+      "delta_ema_period": 33,
+      "imbalance_lookback": 35,
+      "imbalance_threshold": 0.35,
+      "exit_imbalance": -0.4,
+      "trend_ema_period": 126
+    },
+    "metrics_summary": {
+      "net_profit": -1872.5,
+      "win_rate": 26.08695652173913,
+      "profit_factor": 0.6934097421203438,
+      "sharpe_ratio": 0.04763501162594275,
+      "max_drawdown": 127090.0,
+      "total_trades": 23
+    },
+    "source": "optimizer"
+  },
+  {
+    "name": "Opt#8 (sharpe_ratio=0.0475, 22 trades)",
+    "params": {
+      "delta_ema_period": 57,
+      "imbalance_lookback": 24,
+      "imbalance_threshold": 0.25,
+      "exit_imbalance": 0.05,
+      "trend_ema_period": 178
+    },
+    "metrics_summary": {
+      "net_profit": -485.0,
+      "win_rate": 27.27272727272727,
+      "profit_factor": 0.9234411996842936,
+      "sharpe_ratio": 0.0475216357485843,
+      "max_drawdown": 127090.0,
+      "total_trades": 22
+    },
+    "source": "optimizer"
+  },
+  {
+    "name": "Opt#9 (sharpe_ratio=0.0470, 134 trades)",
+    "params": {
+      "delta_ema_period": 65,
+      "imbalance_lookback": 36,
+      "imbalance_threshold": 0.3,
+      "exit_imbalance": 0.35,
+      "trend_ema_period": 87
+    },
+    "metrics_summary": {
+      "net_profit": -1930.0,
+      "win_rate": 31.343283582089555,
+      "profit_factor": 0.757537688442211,
+      "sharpe_ratio": 0.04703327802738785,
+      "max_drawdown": 127090.0,
+      "total_trades": 134
+    },
+    "source": "optimizer"
+  },
+  {
+    "name": "Opt#10 (sharpe_ratio=0.0470, 40 trades)",
+    "params": {
+      "delta_ema_period": 27,
+      "imbalance_lookback": 42,
+      "imbalance_threshold": 0.3,
+      "exit_imbalance": -0.2,
+      "trend_ema_period": 11
+    },
+    "metrics_summary": {
+      "net_profit": -2285.0,
+      "win_rate": 32.5,
+      "profit_factor": 0.6655689718258324,
+      "sharpe_ratio": 0.047013532423627685,
+      "max_drawdown": 127090.0,
+      "total_trades": 40
+    },
+    "source": "optimizer"
   }
 ]

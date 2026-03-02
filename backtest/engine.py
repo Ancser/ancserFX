@@ -284,6 +284,9 @@ class BacktestEngine:
                         strategy.on_position_closed()  # reset strategy state
 
                 if order_to_submit is not None:
+                    # Capture SL/TP for trade records before submitting
+                    if order_to_submit.stop_loss is not None or order_to_submit.take_profit_levels is not None or order_to_submit.take_profit is not None:
+                        portfolio.capture_sl_tp(order_to_submit)
                     broker.submit_order(order_to_submit)
 
             # -- Update market (equity snapshot) --
@@ -348,6 +351,8 @@ class BacktestEngine:
                 "pnl": round(t.pnl, 2),
                 "commission": round(t.commission, 2),
                 "bars_held": t.bars_held,
+                "stop_loss_price": t.stop_loss_price,
+                "take_profit_prices": t.take_profit_prices,
             }
             for t in portfolio.trades
         ]
